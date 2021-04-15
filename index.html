@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<!--[if IE 8]> <html lang="en" class="ie8"> <![endif]-->  
+<!--[if IE 9]> <html lang="en" class="ie9"> <![endif]-->  
+<!--[if !IE]><!--> <html lang="en"> <!--<![endif]-->  
+<head>
+    <title>DeepZheng's CV</title>
+    <!-- Meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Responsive HTML5 Resume/CV Template for Developers">
+    <meta name="author" content="Xiaoying Riley at 3rd Wave Media">    
+    <link rel="shortcut icon" href="icon.ico">  
+    <link href='https://fonts.googleapis.com/css?family=Roboto:400,500,400italic,300italic,300,500italic,700,700italic,900,900italic' rel='stylesheet' type='text/css'>
+    <!-- Global CSS -->
+    <link rel="stylesheet" href="assets/plugins/bootstrap/css/bootstrap.min.css">   
+    <!-- Plugins CSS -->
+    <link rel="stylesheet" href="assets/plugins/font-awesome/css/font-awesome.min.css">
+    
+    <!-- Theme CSS -->  
+    <link id="theme-style" rel="stylesheet" href="assets/css/styles.css">
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    <!--设置背景-->
+    <style>
+        body{
+            background:url(assets/images/bg1.jpg) ;
+            background-size: 100%;
+        }
+    </style>
+    
+    <script type="text/javascript">
+        var saverow;
+        function getCredict(id){
+            var mytable = document.getElementById(id);
+            //console.log(mytable.rows.length);
+            var credict =0 ;
+            //忽略第一行和最后一行
+            for(var i=1, rows = mytable.rows.length;i<rows-1;i++){
+                //console.log(mytable.rows[i].cells[1].innerHTML);
+                credict += parseFloat(mytable.rows[i].cells[2].innerHTML);
+            }
+            //console.log(credict);
+            return credict;
+        }
+        function getAverage(id){
+            var mytable = document.getElementById(id);
+            var average = 0;
+            for(var i=1, rows = mytable.rows.length;i<rows-1;i++){
+                average += parseFloat(mytable.rows[i].cells[2].innerHTML) *  parseFloat(mytable.rows[i].cells[3].innerHTML);
+            }
+            average = average / getCredict(id);
+            average = Math.round(average * 100) / 100;//取两位小数
+            //console.log(average);
+            return average;
+        }
+
+        function showInfo(){
+            var divInfo2 = document.getElementById("divInfo2");
+            divInfo2.style.display = "none";
+            var divInfo = document.getElementById("divInfo1");
+            //判断该层是否显示,显示则隐藏,隐藏则显示
+            divInfo.style.display = divInfo.style.display == "none" ? "block" : "none";
+            
+            //console.log(divInfo.style.display);
+        }
+
+        function addInfo(){
+            var marktable = document.getElementById("marktab");
+            var table = document.getElementById("mark");
+            var course = document.getElementById("class").value;
+            var credict = document.getElementById('credict').value;
+            var mark = document.getElementById("marks").value;
+            console.log(course,credict,mark);
+            //创建新元素
+            var newtr = document.createElement("tr");
+            var newyes = document.createElement("td");
+            var newCourse = document.createElement("td");
+            var newCredict = document.createElement("td");
+            var newMark = document.createElement("td");
+            var newButton = document.createElement("td");
+            //往元素中添加内容
+            newyes.innerHTML = "<input type='checkbox'/>";
+            newCourse.innerHTML = course;
+            newCredict.innerHTML = credict;
+            newMark.innerHTML = mark;
+            newButton.innerHTML = "<button class='button edit' onclick='getEdit(this.parentNode.parentNode)'>编辑</button><button class='button delete' onclick='deleteOne(this.parentNode.parentNode)'>删除</button>";
+            newtr.appendChild(newyes);
+            newtr.appendChild(newCourse);
+            newtr.appendChild(newCredict);
+            newtr.appendChild(newMark);
+            newtr.appendChild(newButton);
+            marktable.appendChild(newtr);
+            table.rows[table.rows.length-1].cells[2].innerHTML = getCredict("mark");
+            table.rows[table.rows.length-1].cells[3].innerHTML = getAverage("mark");
+        }
+        function getDelete(){
+            var tab = document.getElementById("marktab");
+            var table = document.getElementById("mark");
+            var cks = Array.from(tab.getElementsByTagName("input"));
+            cks.forEach(ck=>{
+                if(ck.checked){
+                    tab.removeChild(ck.parentNode.parentNode);
+                }
+            });
+            table.rows[table.rows.length-1].cells[2].innerHTML = getCredict("mark");
+            table.rows[table.rows.length-1].cells[3].innerHTML = getAverage("mark");
+        }
+        function deleteOne(row){
+            var tab = document.getElementById("marktab");
+            var table = document.getElementById("mark");
+            tab.removeChild(row);
+            table.rows[table.rows.length-1].cells[2].innerHTML = getCredict("mark");
+            table.rows[table.rows.length-1].cells[3].innerHTML = getAverage("mark");
+        }
+        function getEdit(row){
+            var divInfo = document.getElementById("divInfo1");
+            divInfo.style.display = "none";
+            var divInfo2 = document.getElementById("divInfo2");
+            divInfo2.style.display = divInfo.style.display == "none" ? "block" : "none";
+            
+            //saverow = row;
+            //console.log(row.childNodes[3]);
+            //console.log(row.childNodes[5]);
+            //console.log(row.childNodes[6]);
+            //console.log(row.childNodes[7]);
+            //console.log(row.childNodes[8]);
+            document.getElementById("class1").value = row.childNodes[3].innerHTML;
+            document.getElementById("credict1").value = row.childNodes[5].innerHTML;
+            document.getElementById("marks1").value = row.childNodes[7].innerHTML;
+        }
+        function confirmEdit(){
+            var table = document.getElementById("mark");
+            saverow.childNodes[3].innerHTML = document.getElementById("class1").value;
+            saverow.childNodes[5].innerHTML = document.getElementById("credict1").value;
+            saverow.childNodes[7].innerHTML = document.getElementById("marks1").value;
+            table.rows[table.rows.length-1].cells[2].innerHTML = getCredict("mark");
+            table.rows[table.rows.length-1].cells[3].innerHTML = getAverage("mark");
+        }
+    </script>
+</head> 
+
+
+    
+
+    <body>
+
+    <div class="wrapper">
+        <div class="sidebar-wrapper">
+            <div class="profile-container">
+                <img class="profile" src="assets/images/tx.png" alt="" />
+                <h1 class="name">郑璟泓</h1>
+                <h3 class="tagline">自动化卓越实验班1901</h3>
+            </div><!--//profile-container-->
+            
+            <!--将ul与li一起使用 创建无序列表-->
+            <div class="contact-container container-block">
+                <ul class="list-unstyled contact-list">
+                    <li class="email"><i class="fa fa-envelope"></i><a href="mailto: Deepzheng@hust.edu.cn">      Deepzheng@hust.edu.cn</a></li>
+                    <li class="phone"><i class="fa fa-info-circle"></i>       U201914070</li>
+                    <li class="website"><i class="fa fa-graduation-cap"></i><a href="http://aia.hust.edu.cn/" target="_blank">人工智能与自动化学院</a></li>
+                    <li class="github"><i class="fa fa-github fa-2x"></i><a href="https://github.com/DeepZheng" target="_blank">   github.com/DeepZheng</a></li>
+                    <li class="birthday"><i class="fa fa-drivers-license-o"></i>2000年10月23日</li>
+                </ul>
+                
+            <!--//interests-->
+            
+            <div class="interests-container container-block">
+                <h2 class="container-block-title">兴趣爱好</h2>
+                <ul class="list-unstyled interests-list">
+                    <li>篮球</li>
+                    <li>CSGO</li>
+                    <li>睡大觉</li>
+                </ul>
+            </div><!--//interests-->
+
+        </div> <!--//contact-container-->
+            
+            
+            
+        </div><!--//sidebar-wrapper-->
+        
+        
+
+        <div class="main-wrapper">
+            
+            <section class="section summary-section">
+                <h2 class="section-title"><i class="fa fa-user"></i>课程成绩</h2>
+                <table class="table" id="mark">
+                   <thead>
+                      <tr>
+                         <th></th>
+                         <th>课程</th>
+                         <th>学分</th>
+                         <th>成绩</th>
+                         <th></th>
+                      </tr>
+                   </thead>
+                   <tbody id="marktab">
+                      <tr>
+                        <th><input type="checkbox"/></th>
+                         <td>python</td>
+                         <td>2</td>
+                         <td>99</td>
+                         <td>
+                             <button class='button edit' onclick='getEdit(this.parentNode.parentNode)'>编辑</button>
+                            <button class='button delete' onclick='deleteOne(this.parentNode.parentNode)'>删除</button>
+                        </td>
+                      </tr>
+                      <tr>
+                        <th><input type="checkbox"/></th>
+                         <td>微积分</td>
+                         <td>5.5</td>
+                          <td>97</td>
+                          <td>
+                            <button class='button edit' onclick='getEdit(this.parentNode.parentNode)'>编辑</button>
+                           <button class='button delete' onclick='deleteOne(this.parentNode.parentNode)'>删除</button>
+                       </td>
+                      </tr>
+                       <tr>
+                        <th><input type="checkbox"/></th>
+                         <td>概率论与数理统计</td>
+                         <td>2.5</td>
+                          <td>100</td>
+                          <td>
+                            <button class='button edit' onclick='getEdit(this.parentNode.parentNode)'>编辑</button>
+                           <button class='button delete' onclick='deleteOne(this.parentNode.parentNode)'>删除</button>
+                       </td>
+                      </tr>
+                       <tr>
+                        <th><input type="checkbox"/></th>
+                         <td>数据结构</td>
+                         <td>3.5</td>
+                          <td>94</td>
+                          <td>
+                            <button class='button edit' onclick='getEdit(this.parentNode.parentNode)'>编辑</button>
+                           <button class='button delete' onclick='deleteOne(this.parentNode.parentNode)'>删除</button>
+                       </td>
+                      </tr>
+                      <tr>
+                        <th><input type="checkbox"/></th>
+                         <td>电路理论</td>
+                         <td>4</td>
+                          <td>97</td>
+                          <td>
+                            <button class='button edit' onclick='getEdit(this.parentNode.parentNode)'>编辑</button>
+                           <button class='button delete' onclick='deleteOne(this.parentNode.parentNode)'>删除</button>
+                       </td>
+                      </tr>
+                   </tbody>
+
+                   <tfoot>
+                        <th>加权平均</th>
+                        <td></td>
+                        <th><script>document.write(getCredict("mark"))</script></th>
+                        <th><script>document.write(getAverage("mark"))</script></th>
+                   </tfoot>
+                </table>
+
+            <div>
+                <button class="button add" onclick="showInfo()">添加</button>
+                <button class="button delete" onclick="getDelete()">删除</button>
+            </div>
+            <br></br>
+            <div id = "divInfo1" style="display: none;"><!--初始隐藏-->
+                <p>课程 ：<input id="class" type="text"></p>
+                <p>学分 ：<input id="credict" type="text"></p>                
+                <p>分数 ：<input id="marks" type="text"></p>                                    
+                <p><button class="button yes" onclick="addInfo()">确认添加</button></p>                    
+            </div>
+
+            <div id = "divInfo2" style="display: none;"><!--初始隐藏-->
+                <p>
+                    课程 ：<input id="class1" type="text">
+                </p>
+                <p>
+                    学分 ：<input id="credict1" type="text">
+                </p>
+                <p>
+                    分数 ：<input id="marks1" type="text">
+                </p>
+                <p>
+                    <button class="button yes" onclick="confirmEdit()">确认修改</button>
+                </p>
+            </div>
+
+            </section><!--//section-->
+            
+                        
+            <section class="skills-section section">
+                <h2 class="section-title"><i class="fa fa-rocket"></i>技能树</h2>
+                <div class="skillset">        
+                    <div class="item">
+                        <h3 class="level-title">C 语言</h3>
+                        <div class="level-bar">
+                            <div class="level-bar-inner" data-level="95%">
+                            </div>                                      
+                        </div><!--//level-bar-->                                 
+                    </div><!--//item-->
+                    
+                    <div class="item">
+                        <h3 class="level-title">Python</h3>
+                        <div class="level-bar">
+                            <div class="level-bar-inner" data-level="85%">
+                            </div>                                      
+                        </div><!--//level-bar-->                                 
+                    </div><!--//item-->
+                    
+                    <div class="item">
+                        <h3 class="level-title">深度学习</h3>
+                        <div class="level-bar">
+                            <div class="level-bar-inner" data-level="60%">
+                            </div>                                      
+                        </div><!--//level-bar-->                                 
+                    </div><!--//item-->
+                    
+                    <div class="item">
+                        <h3 class="level-title">强化学习</h3>
+                        <div class="level-bar">
+                            <div class="level-bar-inner" data-level="55%">
+                            </div>                                      
+                        </div><!--//level-bar-->                                 
+                    </div><!--//item-->
+                    
+                    <div class="item">
+                        <h3 class="level-title">HTML5 &amp; CSS</h3>
+                        <div class="level-bar">
+                            <div class="level-bar-inner" data-level="45%">
+                            </div>                                      
+                        </div><!--//level-bar-->                                 
+                    </div><!--//item-->
+                    
+                </div>  
+            </section><!--//skills-section-->
+            
+        </div><!--//main-body-->
+    </div>
+ 
+    <footer class="footer">
+        <div class="text-center">
+                <!--/* This template is released under the Creative Commons Attribution 3.0 License. Please keep the attribution link below when using for your own project. Thank you for your support. :) If you'd like to use the template without the attribution, you can check out other license options via our website: themes.3rdwavemedia.com */-->
+                <small class="copyright">Designed with <i class="fa fa-heart"></i> by DeepZheng</a> </small>
+                <p>
+                    <small class="copyright">Huazhong University of Science and Technology </small>
+                </p>
+            
+                    <small class="copyright">Written in 2021.3.26 </small>
+
+        </div><!--//container-->
+    </footer><!--//footer-->
+ 
+    <!-- Javascript -->          
+    <script type="text/javascript" src="assets/plugins/jquery-1.11.3.min.js"></script>
+    <script type="text/javascript" src="assets/plugins/bootstrap/js/bootstrap.min.js"></script>    
+    <!-- custom js -->
+    <script type="text/javascript" src="assets/js/main.js"></script>            
+</body>
+</html> 
+
