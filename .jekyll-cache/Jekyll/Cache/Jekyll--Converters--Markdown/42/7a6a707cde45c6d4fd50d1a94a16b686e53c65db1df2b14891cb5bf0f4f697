@@ -1,0 +1,37 @@
+I"�<p>菜鸡一只</p>
+
+<p>就读于华中某不知名985</p>
+
+<p>热爱 🏀 游戏 以及 代码</p>
+
+<p>欢迎与我交流</p>
+
+<p><img src="/images/wechat.png" alt=" " /></p>
+
+<p><img src="/images/qq.png" alt=" " /></p>
+<section class="post-comments">
+
+  
+    <div id="disqus_thread"></div>
+    <script>
+    
+    var disqus_config = function () {
+        this.page.url = "/about/";
+        this.page.identifier = "/about/";
+    };
+    var disqus_shortname = 'deepzheng';
+    
+    (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+        s.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        s.setAttribute('data-timestamp', +new Date());
+            (d.head || d.body).appendChild(s);
+        })();
+    </script>
+    <noscript>要查看<a href="http://disqus.com/?ref_noscript"> Disqus </a>评论，请启用 JavaScript</noscript>
+    
+  
+
+</section>
+
+:ET
