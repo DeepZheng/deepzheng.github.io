@@ -1,0 +1,226 @@
+I"y&
+<hr />
+<p>layout: post
+title: “Stanford CS144 Lab0 小结”
+date: 2021-07-27 
+description: “ Stanford CS144 Lab0 小结”
+tag: 计算机网络
+—</p>
+<h1 id="stanford-cs144-lab0-小结">Stanford CS144 Lab0 小结</h1>
+
+<blockquote>
+  <p>本文为斯坦福大学计算机网络课程 CS144 编程任务 Lab Assignment 0 的学习小结</p>
+
+  <p>官网 https://cs144.github.io/</p>
+
+  <p>Lab 0 文档 https://cs144.github.io/assignments/lab0.pdf</p>
+
+  <p>个人实验备份代码 https://github.com/deepzheng/sponge</p>
+</blockquote>
+
+<hr />
+
+<h2 id="环境的安装与配置">环境的安装与配置</h2>
+
+<p>官方文档提供了三种支持运行该 Lab 的选择</p>
+
+<p>我还是比较推荐使用课程组提供的 VirtualBox 的镜像的</p>
+
+<p>本来我嫌麻烦，用自己的 Vmware + UBuntu20.04 自己来配置环境，结果在做到第三步运行测试代码 <code class="language-plaintext highlighter-rouge">make check_webget</code> 的时候发现报出了离奇的错误。把代码还原到改动之前依然报错，翻遍全网也没有找到解决办法。</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-b42d2b58d9410a33250215b1d0f55ecb.png" alt="是CMake出了问题？？不太清楚" /></p>
+
+<p>最后只能灰溜溜地下载了 VirtualBox 和课程组的 LUBuntu 镜像。之前从没用过lUBuntu 的我看到类 Windows 的界面还是有点别扭2333 好在基本操作大差不差</p>
+
+<h2 id="networking-by-hand">Networking by hand</h2>
+
+<p>这部分内容比较简单，跟着文档一步步做就好了</p>
+
+<h3 id="fetch-a-web-page">Fetch a Web page</h3>
+
+<p>使用 telnet 发送 http 请求，命令结束后需要两次回车结束请求</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-409ca4a4e660af65011b3df7c62a382f.png" alt="" /></p>
+
+<h3 id="send-youself-an-email">Send youself an email</h3>
+
+<p>官方文档提供的是斯坦福校内的邮箱服务器，想要完成这个部分就需要使用国内的邮箱服务器了，并且操作上会稍微麻烦一点</p>
+
+<p>我选用的是 QQ 的邮箱服务器，在登陆的时候需要提供账号和校验码的 Base64编码</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-3d7b855c6d9004b44d14e8c74063a62a.png" alt="" /></p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-11b0c62368a73a5ff6696137df579a87.png" alt="" /></p>
+
+<h3 id="listening-and-connecting">Listening and connecting</h3>
+
+<p>开两个终端分别模拟客户端和服务器端操作。服务器端开启监听模式，等待客户端建立连接之后，就可以收到另一个终端发来的消息了</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-0f0f3174d423eb9042daebbde6684d4e.png" alt="" /></p>
+
+<h2 id="writing-a-network-program-using-an-os-stream-socket">Writing a network program using an OS stream socket</h2>
+
+<p>这一个部分是本 Lab 的核心，需要使用 OS 流套接字编写实现一个get_URL函数以及完成一个字节流控制读写类</p>
+
+<h3 id="writing-webget">Writing webget</h3>
+<p>模拟上面 telnet 的操作，使用套接字编写 get_URL 函数实现 webget 。</p>
+
+<p><code class="language-plaintext highlighter-rouge">web_get.cc</code></p>
+
+<pre><code class="language-C++">void get_URL(const string &amp;host, const string &amp;path) {
+    // Your code here.
+    TCPSocket sock{};
+    sock.connect(Address(host,"http"));
+    string message = "GET " + path + " HTTP/1.1\r\nHOST: " + host + "\r\n\r\n";
+    sock.write(message);
+    sock.shutdown(SHUT_WR);
+    while( !sock.closed() &amp;&amp; !sock.eof()){
+        //通过 eof 判断是否已经读到了最末尾，若没有则读取继续
+        cout &lt;&lt; sock.read();
+    }
+    sock.close();
+    return ;
+
+    cerr &lt;&lt; "Function called: get_URL(" &lt;&lt; host &lt;&lt; ", " &lt;&lt; path &lt;&lt; ").\n";
+    cerr &lt;&lt; "Warning: get_URL() has not been implemented yet.\n";
+}
+</code></pre>
+
+<p><img src="https://pic4.zhimg.com/80/v2-b1ef21ee9e774f5c37722ce91dc512dc.png" alt="测试通过" /></p>
+
+<blockquote>
+  <p>tips:</p>
+
+  <ul>
+    <li>TCP 在建立连接时会由系统隐形 bind 端口，不需要像 UDP 一样手动操作</li>
+    <li>相比于<code class="language-plaintext highlighter-rouge">close()</code>,<code class="language-plaintext highlighter-rouge">shutdown()</code> 提供了一个更为优雅的操作方式。调用 <code class="language-plaintext highlighter-rouge">close()</code> 函数意味着完全断开连接，即不能发送数据也不能接收数据。而 <code class="language-plaintext highlighter-rouge">shutdown()</code> 提供了三个变量取值
+      <blockquote>
+        <ul>
+          <li>SHUT_RD 断开输入流</li>
+          <li>SHUT_WR 断开输出流</li>
+          <li>SHUT_RDWR 同时断开 I/O 流</li>
+        </ul>
+      </blockquote>
+    </li>
+    <li>默认情况下，调用 <code class="language-plaintext highlighter-rouge">close()</code> 后无论输入缓冲区中是否有数据都将立即关闭套接字，后续需要发送数据需要再次建立套接字连接。而<code class="language-plaintext highlighter-rouge">shutdown()</code> 只用于关闭连接而非套接字，并且 <code class="language-plaintext highlighter-rouge">shutdown()</code> 会等待输入缓冲区中的数据传输完成后再关闭连接</li>
+  </ul>
+</blockquote>
+
+<h3 id="an-in-memory-reliable-byte-stream">An in-memory reliable byte stream</h3>
+
+<p>该部分需要实现一个简单的可靠字节流类，支持写入、读出、容量控制、流量计算</p>
+
+<p>对于字节流缓冲区的数据结构，本来我是想使用<code class="language-plaintext highlighter-rouge">string</code>来进行双向读写，但是按照现代C++d的要求，应该尽可能避免使用指针，而 string 下标的索引本质上还是指针，所以我最后使用了 <code class="language-plaintext highlighter-rouge">deque</code> 双向队列。双向队列支持头尾读写，刚好对应字节流从尾部写入从头部读取的特性，并且拥有迭代器，完美支持了该字节流类中的 peek 操作</p>
+
+<p><code class="language-plaintext highlighter-rouge">byte_stream.hh</code></p>
+<pre><code class="language-C++">#ifndef SPONGE_LIBSPONGE_BYTE_STREAM_HH
+#define SPONGE_LIBSPONGE_BYTE_STREAM_HH
+
+#include &lt;string&gt;
+#include &lt;deque&gt;
+
+//! Bytes are written on the "input" side and read from the "output"
+//! side.  The byte stream is finite: the writer can end the input,
+//! and then no more bytes can be written.
+class ByteStream {
+  private:
+    // Your code here -- add private members as necessary.    
+    std::deque &lt;char&gt; Stream = {};
+    size_t Capacity = 0;
+    size_t written_byte = 0;
+    size_t read_byte = 0;
+    bool is_end_input = false;
+    // Hint: This doesn't need to be a sophisticated data structure at
+    // all, but if any of your tests are taking longer than a second,
+    // that's a sign that you probably want to keep exploring
+    // different approaches.
+
+    bool _error{};  //!&lt; Flag indicating that the stream suffered an error.
+
+  public:
+    //这部分不需要编辑，略去
+
+#endif  // SPONGE_LIBSPONGE_BYTE_STREAM_HH
+
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">byte_stream.cc</code></p>
+<pre><code class="language-C++">#include "byte_stream.hh"
+
+// Dummy implementation of a flow-controlled in-memory byte stream.
+
+// For Lab 0, please replace with a real implementation that passes the
+// automated checks run by `make check_lab0`.
+
+// You will need to add private members to the class declaration in `byte_stream.hh`
+using namespace std;
+
+ByteStream::ByteStream(const size_t capacity) : Capacity(capacity) {}
+
+// 向队列中写入data
+size_t ByteStream::write(const string &amp;data) {
+    size_t write_length = data.length();
+    if(write_length &gt; Capacity - Stream.size()){
+        //compared with left room
+        write_length = Capacity - Stream.size();
+    }
+    for(size_t i = 0;i &lt; write_length;i++){
+        Stream.emplace_back(data[i]);
+    }
+    written_byte += write_length;
+    return write_length;
+}
+
+//! \param[in] len bytes will be copied from the output side of the buffer
+// 从头部读取 len 长度的字节
+string ByteStream::peek_output(const size_t len) const {
+    string output_string;
+    for(size_t i = 0;i &lt; len &amp;&amp; i &lt; Stream.size();i++){
+        output_string.push_back(Stream.at(i));
+    }
+    return output_string;
+}
+
+//! \param[in] len bytes will be removed from the output side of the buffer
+// 将头部 len 长度字节移除字节流
+void ByteStream::pop_output(const size_t len) {
+    size_t pop_length = len &gt; Stream.size() ? Stream.size(): len;
+    read_byte += pop_length;
+    while(pop_length --){
+        Stream.pop_front();
+    }
+}
+
+//! Read (i.e., copy and then pop) the next "len" bytes of the stream
+//! \param[in] len bytes will be popped and returned
+//! \returns a string
+// 读取（相当于peek和pop操作的结合）
+std::string ByteStream::read(const size_t len) {
+    size_t read_length = len &gt; Stream.size() ? Stream.size() : len;
+    string read_string = peek_output(read_length);
+    pop_output(read_length);
+    return read_string;
+}
+
+void ByteStream::end_input() {  is_end_input = true;}
+
+bool ByteStream::input_ended() const { return is_end_input; }
+
+size_t ByteStream::buffer_size() const { return Stream.size(); }
+
+bool ByteStream::buffer_empty() const { return Stream.empty(); }
+
+bool ByteStream::eof() const { return Stream.empty() &amp;&amp; is_end_input; }
+
+size_t ByteStream::bytes_written() const { return written_byte ; }
+
+size_t ByteStream::bytes_read() const { return read_byte; }
+
+size_t ByteStream::remaining_capacity() const { return Capacity - Stream.size(); }
+
+</code></pre>
+
+<p><img src="https://pic4.zhimg.com/80/v2-28da27c8c4074258b238a8b12677dc32.png" alt="测试通过" /></p>
+
+<p>任务结束，收工大吉</p>
+:ET

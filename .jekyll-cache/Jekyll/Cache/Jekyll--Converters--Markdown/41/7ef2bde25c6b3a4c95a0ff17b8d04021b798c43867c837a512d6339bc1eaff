@@ -1,0 +1,136 @@
+I"�<blockquote>
+  <p>本文为斯坦福大学计算机网络课程 CS144 编程任务 Lab Assignment 2 的学习小结</p>
+
+  <p>官网 https://cs144.github.io/</p>
+
+  <p>Lab 2 文档 https://cs144.github.io/assignments/lab2.pdf</p>
+
+  <p>个人实验备份代码 https://github.com/deepzheng/sponge</p>
+</blockquote>
+
+<hr />
+
+<p>本次 Lab 需要实现 TCP 的接收端，负责接收 TCP 报文，并确定应发送的 acknowledgment 确认编码以及流量控制</p>
+
+<h2 id="translating-between-64-bit-indexes-and-32-bit-seqnos">Translating between 64-bit indexes and 32-bit seqnos</h2>
+
+<p>在传输的 TCP 报文头部中，由于空间限制，字节序列号只能用 32 位的索引来表示。但是 32 位可能无法完全一一对应一串字节流，所以需要我们在接收端人为将索引转换为 64 位以保证不会溢出。</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-6bcc3809f841934db004b62596f14549.png" alt="" /></p>
+
+<p>如上图，封装在 TCP header 中的是 seqno ，SYN 为起始信号，其 seqno 是随机的，我们把 SYN 的 seqno 称为 ISN。</p>
+
+<p>本部分需要我们完成两个函数来完成 TCP 序列号和字节流索引之间的相互转换</p>
+
+<h3 id="wrap">wrap</h3>
+
+<p>将 absolute seqno 转换为 seqno</p>
+
+<p>这个比较简单，直接加上去就行，需要注意类型转换需要用到 <code class="language-plaintext highlighter-rouge">static_cast&lt; &gt;</code></p>
+
+<pre><code class="language-C++">WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
+    return WrappingInt32(static_cast&lt;uint32_t&gt; (n) + isn.raw_value());
+}
+</code></pre>
+
+<h3 id="unwrap">unwrap</h3>
+
+<p>将 seqno 转换为 absolute seqno</p>
+
+<p>由于很多 64 位索引都可能被包装成同一个 32 位序列号 （eg ：当 ISN 为 0，序列号 17 可能代表 17, 2<sup>32</sup> + 17, 2<sup>33</sup> + 17, 2<sup>34</sup> + 17…）所以我们需要 checkpoint 来辅助判断，它的值为之前实现过的 ByteStream 中第一个未组装的字节索引号（64位，从0开始）。unwarp 函数返回的索引值为最接近 checkpoint 的值</p>
+
+<p>思路上，首先应该计算出 n 与 开头 isn 的偏移量 offset。由于 checkpoint 可以表示为  mod * 2<sup>32</sup> + k，画个图就知道距离 checkpoint 最近的数可能有 3 种情况 :</p>
+
+<ol>
+  <li>mod * 2 <sup>32</sup> + offset</li>
+  <li>(mod - 1) * 2 <sup>32</sup> + offset</li>
+  <li>(mod + 1) * 2 <sup>32</sup> + offset
+<img src="https://pic4.zhimg.com/80/v2-c93d8267a527a0fc55e5184e014eebf6.png" alt="" /></li>
+</ol>
+
+<p>计算出这三个的值然后比较取距离最小的即可</p>
+
+<pre><code class="language-C++">uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
+    uint64_t offset = static_cast&lt;uint64_t&gt; (n.raw_value()- isn.raw_value());
+    uint64_t add =  1ul &lt;&lt; 32;
+    uint64_t mod = checkpoint &gt;&gt; 32;
+    uint64_t offset_1 = offset + mod * add;
+    //需要特判 mod 为 0 的情况，此时 mod-1 没有意义
+    uint64_t offset_2 = mod !=0 ? offset + (mod - 1) * add : offset_1; 
+    uint64_t offset_3 = offset + (mod + 1) * add;
+    uint64_t abs_1 = offset_1 &gt; checkpoint ? offset_1 - checkpoint : checkpoint - offset_1;
+    uint64_t abs_2 = offset_2 &gt; checkpoint ? offset_2 - checkpoint : checkpoint - offset_2;
+    uint64_t abs_3 = offset_3 &gt; checkpoint ? offset_3 - checkpoint : checkpoint - offset_3;
+
+    uint64_t min_abs = min(min(abs_1,abs_2),abs_3);
+    if(min_abs == abs_1)    return offset_1;
+    if(min_abs == abs_2)    return offset_2;
+    if(min_abs == abs_3)    return offset_3;
+
+}
+</code></pre>
+
+<h2 id="implementing-the-tcp-receiver">Implementing the TCP receiver</h2>
+
+<h3 id="segment_received">segment_received</h3>
+
+<p><img src="https://pic4.zhimg.com/80/v2-df7a29961fd900005dcdc3e8173a5184.png" alt="TCP接收流程" /></p>
+
+<ul>
+  <li>TCPReceiver 一开始处于监听状态，一旦接收到 SYN 信号，将首个序列号设为 ISN，并开始读入流程</li>
+  <li>计算 checkpoint 和第一个有效字符的序列号，通过 <code class="language-plaintext highlighter-rouge">wrap</code> 转换为所需的从0开始的 index</li>
+  <li>调用 <code class="language-plaintext highlighter-rouge">push_substring</code> 将报文中的字符串读入 Reassembler 中开始组装流程</li>
+</ul>
+
+<pre><code class="language-C++">void TCPReceiver::segment_received(const TCPSegment &amp;seg) {
+    TCPHeader head = seg.header();
+    if(!_is_syn &amp;&amp; !head.syn)   return ;
+
+    if(head.syn){
+        _is_syn = true;
+        _isn = head.seqno; 
+    }
+    
+    string payload = seg.payload().copy();
+    WrappingInt32 seqno = head.syn ? head.seqno + 1 : head.seqno; //第一个有效字符的序列号    
+    uint64_t checkpoint = stream_out().bytes_written();
+    //uwarp出来是 absolute seqno 需要 -1 才能转化成 stream index
+    uint64_t index = unwrap(seqno,_isn,checkpoint) - 1;
+
+    _reassembler.push_substring(payload, index, _is_syn &amp;&amp; head.fin);
+}
+</code></pre>
+
+<h3 id="ackno">ackno</h3>
+
+<p>返回第一个未确认接收的字节序列号，返回时先进行 warp 操作转化为 32位序列号。</p>
+
+<p>需要注意的是，如果接收的报文段中含有 FIN 信号，则需要将原本的序列号再加 1（因为 FIN 在发送和接收时都占据了一个序列号，但是却并没有读入，<code class="language-plaintext highlighter-rouge">bytes_written()</code>中没有计算这个字节）</p>
+
+<pre><code class="language-C++">optional&lt;WrappingInt32&gt; TCPReceiver::ackno() const { 
+    if(!_is_syn)    return {};
+    else{
+        size_t ack = stream_out().bytes_written() + 1;
+        if(stream_out().input_ended())   return wrap(ack + 1,_isn); 
+        else    return wrap(ack,_isn); 
+    }
+}
+</code></pre>
+
+<h3 id="window_size">window_size</h3>
+
+<p>返回 <code class="language-plaintext highlighter-rouge">first unassembled</code> 到 <code class="language-plaintext highlighter-rouge">first unacceptable</code> 的距离，由于 TCPReceiver 和 ByteStream 共享容量，在 ByteStream 中已经实现了 <code class="language-plaintext highlighter-rouge">remaining_capacity()</code> 功能，直接调用即可</p>
+
+<pre><code class="language-C++">size_t TCPReceiver::window_size() const { 
+  return stream_out().remaining_capacity();
+}
+</code></pre>
+
+<p><img src="https://pic4.zhimg.com/80/v2-3d3bb386b10e6cac2ce96704af8848bc.png" alt="测试通过" /></p>
+
+<h2 id="小结">小结</h2>
+
+<p>本节 Lab 虽然代码量不是很大，但是要做出来还是需要对文档内容和要求理解透彻并且熟悉之前所完成过的内容，重点是那三个序列号的相互之间的关系！否则就会出现这里忘记 +1 那里忘记 -1 的小错误</p>
+
+<p>同时，通过完成这次任务也解开了我 Lab1 中的小疑问：为什么 <code class="language-plaintext highlighter-rouge">push_substring</code> 中起始的 index 一定是从 0 开始的？不是说起始的序列号是从一个随机的号码开始的吗？ 原来还是我对 TCP 接收处理的细节理解不够。 TCP 传输报文段中的起始序列号确实是随机的 32 位编码，但是当传输到接收端时，TCP 又会对其进行处理，转换为 64 位并且从 0 开始的索引，方便组装操作，并且确保尽可能不会出现编码溢出情况</p>
+:ET

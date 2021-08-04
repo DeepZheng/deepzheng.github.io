@@ -1,0 +1,18 @@
+I".
+<ul>
+  <li><a href="#translating-between-64-bit-indexes-and-32-bit-seqnos">Translating between 64-bit indexes and 32-bit seqnos</a>
+    <ul>
+      <li><a href="#wrap">wrap</a></li>
+      <li><a href="#unwrap">unwrap</a></li>
+    </ul>
+  </li>
+  <li><a href="#implementing-the-tcp-receiver">Implementing the TCP receiver</a>
+    <ul>
+      <li><a href="#segment_received">segment_received</a></li>
+      <li><a href="#ackno">ackno</a></li>
+      <li><a href="#window_size">window_size</a></li>
+    </ul>
+  </li>
+  <li><a href="#小结">小结</a></li>
+</ul>
+:ET

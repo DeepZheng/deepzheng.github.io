@@ -1,0 +1,22 @@
+I"\
+<ul>
+  <li><a href="#stanford-cs144-lab0-小结">Stanford CS144 Lab0 小结</a>
+    <ul>
+      <li><a href="#环境的安装与配置">环境的安装与配置</a></li>
+      <li><a href="#networking-by-hand">Networking by hand</a>
+        <ul>
+          <li><a href="#fetch-a-web-page">Fetch a Web page</a></li>
+          <li><a href="#send-youself-an-email">Send youself an email</a></li>
+          <li><a href="#listening-and-connecting">Listening and connecting</a></li>
+        </ul>
+      </li>
+      <li><a href="#writing-a-network-program-using-an-os-stream-socket">Writing a network program using an OS stream socket</a>
+        <ul>
+          <li><a href="#writing-webget">Writing webget</a></li>
+          <li><a href="#an-in-memory-reliable-byte-stream">An in-memory reliable byte stream</a></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+:ET
