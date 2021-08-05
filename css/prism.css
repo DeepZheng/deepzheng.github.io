@@ -5,7 +5,7 @@ https://prismjs.com/download.html#themes=prism-tomorrow&languages=markup+css+cli
  * Based on https://github.com/chriskempson/tomorrow-theme
  * @author Rose Pritchard
  */
- 
+
 
 code[class*="language-"],
 pre[class*="language-"] {
@@ -370,7 +370,7 @@ span.inline-color {
 /*添加修改*/
 .code-toolbar{
 	position: relative;
-	background: #000;
+	background: rgb(40, 40, 40);
 	padding-top: 20px;
 	border-radius: 5px;
 	}
@@ -382,7 +382,7 @@ span.inline-color {
 	padding-left: 3.8em; 
 	counter-reset: linenumber;
 	max-height: 400px;/*修改*/
-	background: #151515;/*修改*/
+	background: rgb(45, 45, 45);/*修改*/
 	border: none;
 	}
 	.pre-mac{
