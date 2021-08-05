@@ -2,6 +2,16 @@
 https://prismjs.com/download.html#themes=prism-tomorrow&languages=markup+css+clike+javascript+apacheconf+apex+arduino+aspnet+c+csharp+cpp+cmake+css-extras+csv+django+docker+git+go+http+hpkp+hsts+java+javadoc+javadoclike+javastacktrace+json+kotlin+latex+lua+makefile+markdown+markup-templating+matlab+nginx+php+phpdoc+python+r+ruby+rust+sql+swift+typescript+uri+vim+xml-doc&plugins=line-highlight+line-numbers+file-highlight+show-language+inline-color+normalize-whitespace+toolbar+copy-to-clipboard+match-braces */
 /// <reference lib="WebWorker"/>
 
+
+//这个是开启行号
+$('pre').addClass("line-numbers").css("white-space", "pre-wrap");;
+
+//等加载完添加mac的三个红绿灯的点
+window.onload = function() {
+$("pre").before('<div class="pre-mac"><span></span><span></span><span></span></div>');
+}
+
+
 var _self = (typeof window !== 'undefined')
 	? window   // if in browser
 	: (

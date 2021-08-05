@@ -5,12 +5,13 @@ https://prismjs.com/download.html#themes=prism-tomorrow&languages=markup+css+cli
  * Based on https://github.com/chriskempson/tomorrow-theme
  * @author Rose Pritchard
  */
+ 
 
 code[class*="language-"],
 pre[class*="language-"] {
 	color: #ccc;
 	background: none;
-	font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+	font-family: 'Fira Code','Andale Mono' ,'Ubuntu Mono',Consolas, Monaco, monospace;
 	font-size: 1em;
 	text-align: left;
 	white-space: pre;
@@ -364,3 +365,48 @@ span.inline-color {
 	opacity: 1;
 }
 
+/*在下载的css最后面添加*/
+
+/*添加修改*/
+.code-toolbar{
+	position: relative;
+	background: #000;
+	padding-top: 20px;
+	border-radius: 5px;
+	}
+	
+	
+	pre[class*="language-"].line-numbers {
+	position: relative;
+	padding: 3px; /*修改*/
+	padding-left: 3.8em; 
+	counter-reset: linenumber;
+	max-height: 400px;/*修改*/
+	background: #151515;/*修改*/
+	border: none;
+	}
+	.pre-mac{
+	position: absolute;
+	top: 7px;
+	left: 10px;
+	width: 100px;
+	z-index: 99;
+	}
+	.pre-mac>span{
+	float: left;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	margin-right: 5px;
+	}
+	.pre-mac>span:nth-child(1){
+	background: red;
+	}
+	.pre-mac>span:nth-child(2){
+	background: sandybrown;
+	}
+	.pre-mac>span:nth-child(3){
+	background: limegreen;
+	}
+
+	
