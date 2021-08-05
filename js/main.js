@@ -29,5 +29,8 @@ $(document).ready(function() {
   $('.btn-mobile-menu__icon').click(function() {
     // 导航按钮被点击
     // this.style.backgroundColor = '#fff'; 设置颜色后会自动消失
-  });  
+  }); 
+  
+  
 });
+
