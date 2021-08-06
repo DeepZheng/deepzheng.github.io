@@ -1,6 +1,17 @@
+I"3<p>菜鸡一只</p>
+
+<p>就读于华中某不知名985</p>
+
+<p>热爱 🏀 游戏 以及 代码</p>
+
+<p>欢迎与我交流</p>
+
+<p><img src="/images/wechat.png" alt=" " /></p>
+
+<p><img src="/images/qq.png" alt=" " /></p>
 <section class="post-comments">
 
-    <script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+    <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
     <div id="comment"></div>
     
     <script>
@@ -12,7 +23,7 @@
             placeholder: 'qwq 老铁，说两句呗',
             
             //avatar: wavatar,
-            path: '{{ page.url }}',
+            path: '/about/',
             meta: ['nick','mail'],
             pageSize: 10,
             emojiCDN:  '//i0.hdslb.com/bfs/emote/', 
@@ -26,9 +37,7 @@
                     "捂眼": "c5c6d6982e1e53e478daae554b239f2b227b172b.png",
                     "妙啊": "b4cb77159d58614a9b787b91b1cd22a81f383535.png",
                     "吃瓜": "4191ce3c44c2b3df8fd97c33f85d3ab15f4f3c84.png",
-                    "惊喜": "0afecaf3a3499479af946f29749e1a6c285b6f65.png",
-                    "羞羞": "f4f9171e4d8c3f30827a8b96ea1ce1beb825ad50.png",
-                    "狗子": "6a997106af5bf490f22c80a7acf3be813ee755fc.png",
+                    "吃瓜": "4191ce3c44c2b3df8fd97c33f85d3ab15f4f3c84.png",
                     "热词_好耶": "ee2d354d3e67e5d77bab31ad8af99cd5ac89c009.png",
                     "热词_大师球": "f30089248dd137c568edabcb07cf67e0f6e98cf3.png",
                     "热词_打卡": "a9cf77c78e1b9b40aa3ed4862402fba008ee2f51.png",
@@ -92,3 +101,5 @@
     </script>
 
 </section>
+
+:ET
