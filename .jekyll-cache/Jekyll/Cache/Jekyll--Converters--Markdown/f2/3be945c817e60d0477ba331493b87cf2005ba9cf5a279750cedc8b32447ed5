@@ -1,6 +1,17 @@
+I"�<p>菜鸡一只</p>
+
+<p>就读于华中某不知名985</p>
+
+<p>热爱 🏀 游戏 以及 代码</p>
+
+<p>欢迎与我交流</p>
+
+<p><img src="/images/wechat.png" alt=" " /></p>
+
+<p><img src="/images/qq.png" alt=" " /></p>
 <section class="post-comments">
 
-    <script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+    <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
     <div id="comment"></div>
     
     <script>
@@ -12,12 +23,12 @@
             placeholder: 'qwq 老铁，说两句呗',
             
             //avatar: wavatar,
-            path: '{{ page.url }}',
+            path: '/about/',
             meta: ['nick','mail'],
             pageSize: 10,
-            emojiCDN:  '//i0.hdslb.com/bfs/emote/', 
+            emojiCDN: emojiCDN: '//i0.hdslb.com/bfs/emote/', 
             /*
-            emojiMaps: {
+            emojiMaps: path.indexOf('emoji') > -1 ? {
                     "藏狐": "ba0937ef6f3ccca85e2e0047e6263f3b4da37201.png",
                     "给心心": "1597302b98827463f5b75c7cac1f29ea6ce572c4.png",
                     "酸了": "92b1c8cbceea3ae0e8e32253ea414783e8ba7806.png",
@@ -85,3 +96,5 @@
     </script>
 
 </section>
+
+:ET
