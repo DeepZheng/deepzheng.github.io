@@ -17,6 +17,17 @@ comment:
     # disqus: deepzheng
     # uyan: 2143225  # 有言id,登录有言官网申请
 
+    #valine:
+    #    el: '#comment'
+    #    enable: true
+    #    appid: mdY50s5ByJYIg98RP6YM38gb-9Nh9j0Va
+     #   appkey: 2h90kQfmYL7Au8Ap0mcfrMaz
+    #    notify: false
+    #    vefify: false
+    #    placeholder: qwq 老铁，说两句呗
+    #    avatar: wavatar
+     #   guest_info: nick,mail
+    #    pageSize: 10
 # Social
 social:
     #weibo: 5366874726 
