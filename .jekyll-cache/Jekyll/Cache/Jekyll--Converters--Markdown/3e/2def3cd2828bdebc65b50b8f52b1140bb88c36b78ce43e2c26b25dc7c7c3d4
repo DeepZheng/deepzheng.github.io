@@ -1,7 +1,18 @@
+I"E<p>菜鸡一只</p>
+
+<p>就读于华中某不知名985</p>
+
+<p>热爱 🏀 游戏 以及 代码</p>
+
+<p>欢迎与我交流</p>
+
+<p><img src="/images/wechat.png" alt=" " /></p>
+
+<p><img src="/images/qq.png" alt=" " /></p>
 <section class="post-comments">
 
     <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-    <script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+    <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
     <div id="comment"></div>
     
     <script>
@@ -19,3 +30,5 @@
     </script>
 
 </section>
+
+:ET
