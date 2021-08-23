@@ -4,6 +4,7 @@ title: "【转载】论内卷与躺平"
 date: 2021-08-05 
 description: " 【转载】论内卷与躺平"
 tag: 随笔与摘录
+enableToc: false
 --- 
 
 > 本文源自[愤怒的香蕉的微信公众号](https://mp.weixin.qq.com/s?__biz=MzA3MzA5NDkwMw==&mid=2452546231&idx=1&sn=a87710ac80d320ecd182f5943c2734e5)
