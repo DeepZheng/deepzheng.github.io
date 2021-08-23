@@ -9,7 +9,7 @@ avatarDesc: 什么都不会
 #url: ""
 
 # 博客是否自动生成目录，false为不生成
-enableToc: true
+#enableToc: false
 
 # Comment
 comment:
