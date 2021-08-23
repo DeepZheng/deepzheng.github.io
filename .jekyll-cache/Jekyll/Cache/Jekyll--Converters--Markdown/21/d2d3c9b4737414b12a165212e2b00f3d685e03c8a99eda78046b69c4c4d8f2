@@ -1,0 +1,412 @@
+I"�D<blockquote>
+  <p>本文为斯坦福大学计算机网络课程 CS144 编程任务 Lab Assignment 4 的学习小结</p>
+
+  <p>官网 https://cs144.github.io/</p>
+
+  <p>Lab 4 文档 https://cs144.github.io/assignments/lab4.pdf</p>
+
+  <p>个人实验备份代码 https://github.com/deepzheng/sponge</p>
+</blockquote>
+
+<hr />
+
+<p>TCPConnection 需要完成以下三大功能</p>
+
+<ul>
+  <li>
+    <p>接收报文</p>
+
+    <ul>
+      <li>
+        <p>如果接收到的报文段设置了重置标志<code class="language-plaintext highlighter-rouge">RST</code>，将入栈和出栈的流都设成错误状态并 kill 掉连接</p>
+      </li>
+      <li>将报文段提供给 TCPReceiver 做进一步的处理</li>
+      <li>如果接收到的报文段设置了确认标志<code class="language-plaintext highlighter-rouge">ACK</code>，将 <code class="language-plaintext highlighter-rouge">ackno</code> 和<code class="language-plaintext highlighter-rouge">window_size</code>字段传送给 TCPSender</li>
+      <li>如果传入的报文段占用了序列号，TCPConnection 应该确保至少发送一个用于回复的报文段以确保对方的<code class="language-plaintext highlighter-rouge">ackno</code>和<code class="language-plaintext highlighter-rouge">window_size</code>能得到更新</li>
+    </ul>
+  </li>
+  <li>
+    <p>发送报文</p>
+
+    <ul>
+      <li>任何时候 TCPSender 都将报文段推向其传出队列，设置字段：（<code class="language-plaintext highlighter-rouge">seqno</code>，<code class="language-plaintext highlighter-rouge">SYN</code>，<code class="language-plaintext highlighter-rouge">payload</code>和<code class="language-plaintext highlighter-rouge">FIN</code>）</li>
+      <li>在发送报文段之前，TCPConnection 将询问 Tcreceiver 为其负责传出段的字段：ackno 和 window_size。如果有一个ackno，它将设置 ACK 标志和TCPSegment 中的字段</li>
+    </ul>
+  </li>
+  <li>
+    <p>记录传输时间</p>
+
+    <ul>
+      <li>调用<code class="language-plaintext highlighter-rouge">tick</code>方法告诉 TCPSender 自从上次调用后经过的时间</li>
+      <li>若连续重传数量超过上限，终止连接，发送一个重置段（带有<code class="language-plaintext highlighter-rouge">RST</code>标志的空段）</li>
+      <li>关闭连接若必要的话</li>
+    </ul>
+  </li>
+</ul>
+
+<p><img src="https://pic4.zhimg.com/80/v2-0089cff9d131d761dcba441959a3f6a2.png" alt="" /><br />
+上图就是 TCP 报文段的所有内容了，蓝色部分代表发送方需要传输和设置的内容，红色部分则代表作为接收者所反馈给对方的信息</p>
+
+<p>任务书到这里就结束了，往下就是 FAQs 的部分了。看起来很简单是吧，只要把之前做过的 Receiver 和 Sender 拼拼凑凑就好了。我们试着跑一下 check</p>
+
+<p>好家伙 162 个测试点，果然有点东西。。。</p>
+
+<p>不管了，饭要一口一口吃，路要一步一步走，先把以前实现的能直接调用的 api 先填上去吧</p>
+
+<pre><code class="language-C++">size_t TCPConnection::remaining_outbound_capacity() const { return _sender.stream_in().remaining_capacity() }  
+
+size_t TCPConnection::bytes_in_flight() const { return _sender.bytes_in_flight(); }  
+
+size_t TCPConnection::unassembled_bytes() const { return _receiver.unassembled_bytes(); }  
+
+</code></pre>
+<p>虽然不知道对不对吧。。。先跑个测试看看（信息太多了还得输出到 log 文件里面看2333）</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-2eab269ba7ed9debc707f489dcdeb167.png" alt="" /></p>
+
+<p>包含有 SYN 的连接请求是发送了，但是并没有对这个 SYN 的确认报文，所以其实这个 <code class="language-plaintext highlighter-rouge">connect</code>还应该有包含确认的应答？并且看 warning：Unclean shutdown of TCPConnection，所以在发完一个报文之后需要一个 clean 的 shutdown。</p>
+
+<p>那么什么是 clean shutdown 什么是 unclean shutdown 呢？在第五节任务书告诉我们</p>
+
+<p>在 unclean shutdown 情况下，发送或接收的报文段包会含有 RST 的标志，在这个时候，出站和入站的字节流都是处于一个错误状态，并且 <code class="language-plaintext highlighter-rouge">active()</code> 也处于 false 状态</p>
+
+<p>在 clean shutdown 情况下呢，自然就是在没有错误的情况下关闭连接了。什么时候可以 clean shutdown 呢？</p>
+
+<ol>
+  <li>入站字节流已经被完整组装</li>
+  <li>出站字节流已经被全部发送（包括 FIN ）</li>
+  <li>出站字节流被接收方全部确认</li>
+  <li>本地 TCPConnection 确保远端也满足条件 3，具体实现呢，他给了两种方法
+    <ul>
+      <li>当条件 1 到 3 都满足并且至少 10 倍的初始重传时间内本地都没有收到对方的新报文</li>
+      <li><strong>被动关闭</strong>，但是这个我看的不是太懂 <code class="language-plaintext highlighter-rouge">Prerequisites #1 through #3 are true, and the local peer is 100% certain that the remote peer can satisfy prerequisite #3. How can this be, if TCP doesn’t acknowledge acknowledgments? Because the remote peer was the first one to end its stream.</code></li>
+    </ul>
+  </li>
+</ol>
+
+<p>除此之外，还有一个 <code class="language-plaintext highlighter-rouge">_linger_after_streams_finish</code> 变量用于指示在出入流都结束后是否还需要保持 active 状态直到 10 倍重传时间之后。5.1 中提到，当入站流在出站流到达 EOF 之前结束的话，该变量需要设置成 false</p>
+
+<p>明白了，这就把这两个函数写出来</p>
+
+<pre><code class="language-C++">void TCPConnection::unclean_shutdown(){  
+    _active = false;  
+    _sender.stream_in().set_error();  
+    _receiver.stream_out().set_error();  
+
+    if(!_sender.segments_out().empty()){  
+        TCPSegment rst_seg = _sender.segments_out().front();  
+        rst_seg.header().rst = true;  
+        _segments_out.push(rst_seg);  
+        _sender.segments_out().pop();  
+    }else{  
+      //若队列中没有报文段了需要生成一个空报文段来发送  
+        _sender.send_empty_segment();  
+        TCPSegment rst_seg = _sender.segments_out().front();  
+        rst_seg.header().rst = true;  
+        _segments_out.push(rst_seg);  
+        _sender.segments_out().pop();  
+    }  
+
+}  
+
+void TCPConnection::clean_shutdown(){  
+    if(_receiver.stream_out().input_ended() &amp;&amp; !_sender.stream_in().eof()){  
+        _linger_after_streams_finish = false;  
+    }  
+    if(_receiver.stream_out().input_ended() &amp;&amp; _sender.stream_in().eof() &amp;&amp; _sender.segments_out().empty() &amp;&amp; !_sender.bytes_in_flight()){  
+        if(!_linger_after_streams_finish || time_since_last_segment_received() &gt;= 10*_cfg.rt_timeout){  
+            _active = false;  
+        }  
+    }  
+}  
+</code></pre>
+<p>在 unclean shutdown 情况下，发送方还需要发送一个包含 RST 的报文段，但是在 clean shutdown 情况下，本来就是已经所有的报文段发送完了才 clean 的，自然不需要再发新的段了，把 active 状态变成 false 就够了</p>
+
+<p>然后在析构函数里面，根据提示把unclean shutdown 填进去就行了</p>
+
+<pre><code class="language-C++">TCPConnection::~TCPConnection() {  
+    try {  
+        if (active()) {  
+            cerr &lt;&lt; "Warning: Unclean shutdown of TCPConnection\n";  
+            unclean_shutdown();  
+            // Your code here: need to send a RST segment to the peer  
+        }  
+    } catch (const exception &amp;e) {  
+        std::cerr &lt;&lt; "Exception destructing TCP FSM: " &lt;&lt; e.what() &lt;&lt; std::endl;  
+    }  
+}  
+</code></pre>
+
+<p>再然后还有啥能写的呢。write 好像看起来比较简单，先把这个写了吧</p>
+<pre><code class="language-C++">size_t TCPConnection::write(const string &amp;data) {  
+    size_t write_length = _sender.stream_in().write(data);  
+    _sender.fill_window();  
+    while (!_sender.segments_out().empty())  
+    {  
+        TCPSegment seg = _sender.segments_out().front();  
+        if(_receiver.ackno().has_value()){  
+            seg.header().ack = true;  
+            seg.header().ackno = _receiver.ackno().value();  
+            seg.header().win = _receiver.window_size();  
+        }  
+        _segments_out.push(seg);  
+        _sender.segments_out().pop();  
+    }  
+    return write_length;  
+}  
+</code></pre>
+<p>需要注意的是，在发送报文段的时候，还需要附带接收端的 ackno 和 window_size 数据（如果存在的话）</p>
+
+<p>还有 tick 函数</p>
+
+<p>在 FAQ 中有这么一句话</p>
+<blockquote>
+  <p><strong>When should I send a segment with the rst flag set?</strong></p>
+
+  <ol>
+    <li>
+      <p>If the sender has sent too many consecutive retransmissions without success (more<br />
+than TCPConfig::MAX RETX ATTEMPTS, i.e., 8).</p>
+    </li>
+    <li>
+      <p>If the TCPConnection destructor is called while the connection is still active<br />
+(active() returns true)</p>
+    </li>
+  </ol>
+</blockquote>
+
+<p>第二点指的就是析构函数里了，第一点当重传次数过多 unclean shutdown 放在 tick 函数里面就好了</p>
+
+<pre><code class="language-C++">void TCPConnection::tick(const size_t ms_since_last_tick) {  
+    _time_since_last_segment_received += ms_since_last_tick;  
+    _sender.tick(ms_since_last_tick);  
+    
+    if(_sender.consecutive_retransmissions() &gt; _cfg.MAX_RETX_ATTEMPTS){  
+        unclean_shutdown();  
+    }  
+
+}  
+</code></pre>
+
+<p>再跑一次测试看看<br />
+<img src="https://pic4.zhimg.com/80/v2-636bb3cbf7733b3c0c6d0ecbe6741382.png" alt="" /><br />
+嗯还是一样的错误，啥都没有发。（废话，receive 函数还没写呢，能回复出去就怪了/流汗黄豆）</p>
+
+<p>不过 unclean shutdown 的 warning 已经没了，说明我写的应该没啥问题</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-65ca165a1edca7d1fafa09d979fe8568.png" alt="Image" /></p>
+
+<p>找到了一张很牛逼的状态转换图，再配上前面的 lab 里面 sender 和 receiver 的 FSM ，顺着这个来做应该就行了吧</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-d9af3ede0a975e688b9896c21a323f3b.png" alt="Image" /></p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-9929178fd4f4330715ef6549f0971315.png" alt="Image" /></p>
+
+<p>之前实现的 connect 有点瑕疵，当用于双向连接的时候，第二次握手应该带上对于第一次握手 SYN 的确认号</p>
+
+<pre><code class="language-C++">void TCPConnection::connect() {
+    _sender.fill_window();
+    TCPSegment seg = _sender.segments_out().front();
+    if(_receiver.ackno().has_value()){
+        seg.header().ack = true;
+        seg.header().ackno = _receiver.ackno().value();
+        seg.header().win = _receiver.window_size();
+    }
+    _segments_out.push(seg);
+    _sender.segments_out().pop();
+    
+} 
+</code></pre>
+<p>先把接收 SYN 的部分写出来</p>
+<pre><code class="language-C++">void TCPConnection::segment_received(const TCPSegment &amp;seg) {
+    if(seg.header().rst)    unclean_shutdown();
+
+    _receiver.segment_received(seg);
+    _time_since_last_segment_received = 0;
+    //SYN_RECEIVED
+    if(seg.header().syn &amp;&amp; _sender.next_seqno_absolute() == 0){
+        connect();
+    }
+ }
+</code></pre>
+<p>又跑了一次测试，又报了 unclean shutdown 的 warning。可是这里并不需要 unclean shutdown 啊？难道是每发完一次报文都需要关闭一次连接的意思吗？所以应该在发完报文后，就直接 clean shutdown了</p>
+
+<p>—分割线—</p>
+
+<p>一天又过去了，吭哧吭哧写了一堆又删了一堆，终于过了 43% 的测试了。这玩意属实折磨人，我已经没有写思路的心情了。。</p>
+
+<p>现在 ESTABLISHED 之前的部分应该已经没啥问题了，看测试信息可以正常交换报文了。现在就是本来应该停止发送报文等待关闭连接的时候又发了报文段出去</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-c3dab48e43ac41b4d10a37757d3a2a14.png" alt="" /></p>
+
+<p>然后 unclean shutdown 的 warning 依然在
+<img src="https://pic4.zhimg.com/80/v2-ac22647582fb7ee832136d17b16edf9e.png" alt="Image" /></p>
+
+<pre><code class="language-C++">
+size_t TCPConnection::remaining_outbound_capacity() const { return _sender.stream_in().remaining_capacity(); }
+
+size_t TCPConnection::bytes_in_flight() const { return _sender.bytes_in_flight(); }
+
+size_t TCPConnection::unassembled_bytes() const { return _receiver.unassembled_bytes(); }
+
+size_t TCPConnection::time_since_last_segment_received() const { return _time_since_last_segment_received; }
+
+void TCPConnection::segment_received(const TCPSegment &amp;seg) {
+    if(!_active)    return ;
+    // _receiver.segment_received(seg);
+    _time_since_last_segment_received = 0;
+
+    
+    //bool syn_recv = _receiver.ackno().has_value() &amp;&amp; !_receiver.stream_out().input_ended();
+    bool send_empty = false;
+
+    if(!_receiver.segment_received(seg)){
+        send_empty = true;
+    }
+
+    bool listen = !_receiver.ackno().has_value();
+    bool syn_sent = _sender.next_seqno_absolute() &gt; 0 &amp;&amp; _sender.next_seqno_absolute() == _sender.bytes_in_flight();
+    bool fin_sent = _sender.stream_in().eof() &amp;&amp; _sender.next_seqno_absolute() == _sender.stream_in().bytes_written() + 2 &amp;&amp; _sender.bytes_in_flight() &gt; 0;
+    
+    if(seg.header().rst){
+        if(syn_sent &amp;&amp; !seg.header().ack)   return;
+        unclean_shutdown();
+        return;
+    } 
+
+    if(syn_sent &amp;&amp; seg.header().ack &amp;&amp; seg.payload().size() &gt; 0){   return;}
+
+    if(!seg.header().syn &amp;&amp; listen &amp;&amp; _sender.next_seqno_absolute() == 0){
+        return;
+    }
+    // step 2 of 3-way-handshake
+    if(seg.header().syn &amp;&amp; listen &amp;&amp; _sender.next_seqno_absolute() == 0){
+        connect();
+        return;
+    }
+
+    if(_sender.next_seqno_absolute() &gt; 0 &amp;&amp; seg.header().ack){
+        if(_sender.ack_received(seg.header().ackno,seg.header().win)){
+            send_empty = true;
+        }
+    }
+    
+
+    if(seg.length_in_sequence_space() &gt; 0){
+        send_empty = true;
+    }
+    
+    if(send_empty){
+        if(!fin_sent &amp;&amp; _receiver.ackno().has_value() &amp;&amp; _sender.segments_out().empty()){
+            _sender.send_empty_segment();
+        }
+    }
+    send_segment();
+    
+ }
+
+bool TCPConnection::active() const { return _active; }
+
+size_t TCPConnection::write(const string &amp;data) {
+    size_t write_length = _sender.stream_in().write(data);
+    send_segment();
+    return write_length;
+}
+
+//! \param[in] ms_since_last_tick number of milliseconds since the last call to this method
+void TCPConnection::tick(const size_t ms_since_last_tick) {
+    if(!_active)    return ;
+    _time_since_last_segment_received += ms_since_last_tick;
+    _sender.tick(ms_since_last_tick); 
+    
+    if(_sender.consecutive_retransmissions() &gt; _cfg.MAX_RETX_ATTEMPTS){
+        unclean_shutdown();
+    }
+    send_segment();
+
+}
+
+void TCPConnection::end_input_stream() {
+    if(!_active)    return;
+    _sender.stream_in().end_input();
+    send_segment();
+    }
+
+void TCPConnection::connect() {
+    if(!_active)    return;
+    _sender.fill_window();
+    TCPSegment seg = _sender.segments_out().front();
+    if(_receiver.ackno().has_value()){
+        seg.header().ack = true;
+        seg.header().ackno = _receiver.ackno().value();
+        seg.header().win = _receiver.window_size();
+    }
+    _segments_out.push(seg);
+    _sender.segments_out().pop();
+    clean_shutdown();
+}
+
+
+void TCPConnection::send_segment(){
+    if(!_active)    return;
+    _sender.fill_window();
+    while (!_sender.segments_out().empty())
+    {
+        TCPSegment send = _sender.segments_out().front();
+        if(_receiver.ackno().has_value()){
+            send.header().ack = true;
+            send.header().ackno = _receiver.ackno().value();
+            send.header().win = _receiver.window_size();
+        }
+        _segments_out.push(send);
+        _sender.segments_out().pop();
+    } 
+    clean_shutdown();
+}
+
+
+void TCPConnection::unclean_shutdown(){
+    _active = false;
+    _sender.stream_in().set_error();
+    _receiver.stream_out().set_error();
+
+    if(!_sender.segments_out().empty()){
+        TCPSegment rst_seg = _sender.segments_out().front();
+        rst_seg.header().rst = true;
+        _segments_out.push(rst_seg);
+        _sender.segments_out().pop();
+    }else{
+        _sender.send_empty_segment();
+        TCPSegment rst_seg = _sender.segments_out().front();
+        rst_seg.header().rst = true;
+        _segments_out.push(rst_seg);
+        _sender.segments_out().pop();
+    }
+
+}
+
+void TCPConnection::clean_shutdown(){
+    if(_receiver.stream_out().input_ended() &amp;&amp; !_sender.stream_in().eof()){
+        _linger_after_streams_finish = false;
+    }
+    if(_receiver.stream_out().input_ended() &amp;&amp; _sender.stream_in().eof() &amp;&amp; _sender.segments_out().empty() &amp;&amp; !_sender.bytes_in_flight()){
+        if(!_linger_after_streams_finish || time_since_last_segment_received() &gt;= 10*_cfg.rt_timeout){
+            _active = false;
+        }
+    }
+}
+
+TCPConnection::~TCPConnection() {
+    try {
+        if (active()) {
+            cerr &lt;&lt; "Warning: Unclean shutdown of TCPConnection\n";
+            unclean_shutdown();
+            // Your code here: need to send a RST segment to the peer
+        }
+    } catch (const exception &amp;e) {
+        std::cerr &lt;&lt; "Exception destructing TCP FSM: " &lt;&lt; e.what() &lt;&lt; std::endl;
+    }
+}
+
+</code></pre>
+:ET

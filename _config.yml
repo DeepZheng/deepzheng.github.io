@@ -13,10 +13,6 @@ enableToc: true
 
 # Comment
 comment:
-    # livere: MTAyMC81MDk5NC8yNzQ3Ng  # https://www.livere.com
-    # disqus: deepzheng
-    # uyan: 2143225  # 有言id,登录有言官网申请
-
     #valine:
     #    el: '#comment'
     #    enable: true
@@ -30,12 +26,12 @@ comment:
     #    pageSize: 10
 # Social
 social:
-    #weibo: 5366874726 
+    #weibo: 
     github: deepzheng
     qq: 871121301
-    # zhihu: panpanleopard
+    # zhihu: 
     # juejin: xxx
-    #jianshu: 2ada30d8d0f7
+    #jianshu: 
     # twitter: 
     mail: deepzheng@hust.edu.cn
 
