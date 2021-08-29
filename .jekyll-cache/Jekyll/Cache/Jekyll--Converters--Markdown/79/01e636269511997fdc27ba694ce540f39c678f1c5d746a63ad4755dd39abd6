@@ -1,0 +1,392 @@
+I"G)<hr />
+
+<h2 id="xshell-与-xftp">Xshell 与 Xftp</h2>
+
+<p><img src="https://pic4.zhimg.com/80/v2-6862aaa46cb7e26baf88089fbd4310ce.png" alt="Image" /></p>
+
+<h2 id="帮助指令">帮助指令</h2>
+
+<ul>
+  <li>man [命令或配置文件] （获得帮助信息）</li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>man ls
+</code></pre></div></div>
+<p><img src="https://pic4.zhimg.com/80/v2-63dbc770c1a37386aea26145d91de1db.png" alt="" /></p>
+
+<ul>
+  <li>help [命令或配置文件] （获得shell内置指令的帮助信息）</li>
+</ul>
+
+<p><img src="https://pic4.zhimg.com/80/v2-bcdec8e850c9963e3af840296ee5e82f.png" alt="" /></p>
+
+<h2 id="用户管理">用户管理</h2>
+
+<h2 id="目录结构">目录结构</h2>
+
+<p>层级式树状目录结构</p>
+
+<blockquote>
+  <p>Linux 世界中，一切皆文件</p>
+</blockquote>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/  
+    bin -&gt; 常用指令  
+    etc -&gt; 配置信息  
+    lib -&gt; 各种安装包和库文件(类似 Windows 的 DLL 文件)  
+    usr -&gt; 用户安装的程序和文件 （类似 promgram files）  
+    boot -&gt; Linux 启动相关文件  
+    proc -&gt; 进程相关信息  
+    dev -&gt; 设备管理器，硬件信息以文件形式存储  
+    home  
+
+</code></pre></div></div>
+
+<h3 id="绝对路径与相对路径">绝对路径与相对路径</h3>
+
+<p><strong>绝对路径</strong> ： 从根目录写起 （ / 为根目录标志）</p>
+<blockquote>
+  <p>‘/usr/share/doc’</p>
+</blockquote>
+
+<p><strong>相对路径</strong>： 相对与当前工作目录的路径</p>
+<blockquote>
+  <p>从 /usr/share/doc 到 /usr/share/main<br />
+直接写 cd../main</p>
+</blockquote>
+
+<blockquote>
+  <p>根目录下有没有上层目录？<br />
+使用 ls-al/ 查询，可以看到根目录下确实存在 . 与 .. 两个目录，但是这两个目录的属性与权限完全一致，所以这两个目录其实是<strong>同一个目录</strong></p>
+</blockquote>
+
+<h2 id="快捷键">快捷键</h2>
+
+<p>ctrl + c 结束命令（换行并清空）<br />
+ctrl + u 删除本行<br />
+tab 补全命令（按两下提示分支）</p>
+
+<h2 id="目录相关操作">目录相关操作</h2>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>.   代表此层目录  
+..  代表上一层目录  
+-   代表前一个工作目录  
+~   代表目前使用者身份所在的home目录  
+
+</code></pre></div></div>
+
+<ul>
+  <li>ls 文件目录</li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>常见参数  
+-a  ：全部文件（包括隐藏文件）  
+-A  ：全部文件（包括隐藏文件）但不包括 . 和 ..  
+-l  ：显示文件详细信息 相当于 ll  
+-h  ：将文件容量人性化显示（kb 或 gb 等）  
+
+</code></pre></div></div>
+
+<ul>
+  <li>
+    <p>pwd 显示当前目录<strong>绝对路径</strong></p>
+  </li>
+  <li>
+    <p>cd 切换目录</p>
+  </li>
+</ul>
+
+<p>不加参数默认返回 home 目录</p>
+
+<ul>
+  <li>mkdir 建立新目录</li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+常见参数  
+-p ：创建多级目录  
+
+</code></pre></div></div>
+
+<ul>
+  <li>rmdir 删除空目录</li>
+</ul>
+
+<p>注意 ： rmdir 只能删除空目录，如果目录下有内容无法删除</p>
+
+<p>若需要删除有内容的目录，需要使用 <code class="language-plaintext highlighter-rouge">rm -rf</code></p>
+
+<ul>
+  <li>cp 复制 + 粘贴 + 重命名</li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cp [选项] source dest
+
+常见参数  
+-r  ：递归复制，用于复制文件夹  
+-i  ：若目标文件已经存在，覆盖时先询问  
+-p  ：联通文件的属性（权限，用户，时间）一起复制过去  
+</code></pre></div></div>
+
+<ul>
+  <li>
+    <p>touch 创建空文件</p>
+  </li>
+  <li>
+    <p>mv 移动文件与目录或重命名</p>
+  </li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mv oldNameFile newNameFile  重命名
+mv /tmp/movefile /targetFolder 移动文件
+
+常见参数  
+-f  ：强制，若目标文件存在不询问直接覆盖
+-i  ：若目标文件已经存在，覆盖时先询问  
+-u  ：若目标文件已经存在，且 source 比较新，才会更新
+</code></pre></div></div>
+<p>注意：若有多个文件或目录需要移动，则最后一个文件一定是<strong>目录</strong></p>
+
+<blockquote>
+  <p>mv file1 file2 folder</p>
+</blockquote>
+
+<ul>
+  <li>cat 查看文件内容</li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+
+常见参数  
+-n ：打印行号（连同空白行）
+-b ：打印行号（仅针对非空白行）
+</code></pre></div></div>
+
+<p>注意：</p>
+<ol>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>cat 只能浏览文件不能修改文件，为了浏览方便，一般会带上 <strong>管道命令</strong></td>
+          <td>more</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>tac 指令是从最后一行开始显示，可以看出来 tac 是 cat 倒过来写2333</li>
+</ol>
+
+<ul>
+  <li>more 可翻页查看</li>
+</ul>
+
+<table>
+  <thead>
+    <tr>
+      <th>操作</th>
+      <th>功能说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>space</td>
+      <td>向下翻页</td>
+    </tr>
+    <tr>
+      <td>enter</td>
+      <td>向下一行</td>
+    </tr>
+    <tr>
+      <td>q</td>
+      <td>离开</td>
+    </tr>
+    <tr>
+      <td>ctrl+f</td>
+      <td>向下滚动一屏</td>
+    </tr>
+    <tr>
+      <td>ctrl+b</td>
+      <td>返回上一屏</td>
+    </tr>
+    <tr>
+      <td>=</td>
+      <td>输出当前行的行号</td>
+    </tr>
+    <tr>
+      <td>:f</td>
+      <td>输出文件名和当前行号</td>
+    </tr>
+    <tr>
+      <td>/</td>
+      <td>向下查找关键词</td>
+    </tr>
+  </tbody>
+</table>
+
+<ul>
+  <li>less</li>
+</ul>
+
+<p>类似 more 但比 more 更强大，支持各种显示终端，而且可以向上翻页</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>操作</th>
+      <th>功能说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>space</td>
+      <td>向下翻页</td>
+    </tr>
+    <tr>
+      <td>pagedown</td>
+      <td>向下翻页</td>
+    </tr>
+    <tr>
+      <td>pageup</td>
+      <td>向上翻页</td>
+    </tr>
+    <tr>
+      <td>=</td>
+      <td>输出当前行的行号</td>
+    </tr>
+    <tr>
+      <td>:f</td>
+      <td>输出文件名和当前行号</td>
+    </tr>
+    <tr>
+      <td>/</td>
+      <td>向下查找关键词</td>
+    </tr>
+    <tr>
+      <td>？</td>
+      <td>向上查找字符串</td>
+    </tr>
+    <tr>
+      <td>n</td>
+      <td>重复前一个查找</td>
+    </tr>
+    <tr>
+      <td>N</td>
+      <td>反向重复前一个查找</td>
+    </tr>
+    <tr>
+      <td>g</td>
+      <td>前进到这个数据的第一行</td>
+    </tr>
+    <tr>
+      <td>G</td>
+      <td>前进到这个数据的最后一行</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>less 指令在显示文件内容时，并不是一次将整个文件加载之后才显示，而是根据显示需要加载内容，对于显示大型文件具有较高的效率</p>
+
+<h3 id="数据截取">数据截取</h3>
+
+<ul>
+  <li>head 取出前面几行</li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>head [-n number] fileName
+-n ：后面接数字，代表显示几行的意思
+
+默认情况显示前面 10 行
+
+head -n 20 /etc/profile
+
+若 -n 接负数，代表列出**前面所有行数，但不包括后面的**
+head -n -20 /etc/profile  即除了最后 20 行其他都列出
+</code></pre></div></div>
+
+<ul>
+  <li>tail 取出后面几行</li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>tail [-n number] fileName
+-n ：后面接数字，代表显示几行的意思
+-f ：持续追踪该文档所有更新，按下 ctrl+c 结束（随时有新数据写入时）
+
+默认情况显示后面 10 行
+
+head -n 20 /etc/profile
+
+若 -n 接正号，代表列出**从该行开始之后的所有行**
+head -n +20 /etc/profile  即从20行开始显示
+</code></pre></div></div>
+
+<ul>
+  <li>&gt; 和 »</li>
+</ul>
+
+<p>’&gt;’ ： 覆盖
+‘»‘： 追加</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-e23c2627df36de445676d370d737f298.png" alt="" /></p>
+
+<ul>
+  <li>ln</li>
+</ul>
+
+<p>软链接，类似 windows 快捷方式，存放链接其他文件的路径</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ln -s [源文件或目录] [软连接名]
+</code></pre></div></div>
+
+<p>注意：当我们使用pwd 指令查看目录时，仍然看到的是软链接所在目录
+<img src="https://pic4.zhimg.com/80/v2-d74d023883047d64296992c4fe758a88.png" alt="" /></p>
+
+<ul>
+  <li>history</li>
+</ul>
+
+<p>查看已经执行过的历史命令</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>#显示最近执行的10条指令
+history 10
+#显示编号100的指令
+!100
+</code></pre></div></div>
+
+<h2 id="搜索查找">搜索查找</h2>
+
+<ul>
+  <li>find</li>
+</ul>
+
+<p>从指定目录向下递归遍历各个子目录，将满足条件的文件或者目录显示在终端</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>find [搜索范围] [选项]
+
+选项
+-name&lt;查询方式&gt; ：按照指定文件名查找文件
+-user&lt;用户名&gt; ：查找属于指定用户名所有文件
+-size&lt;文件大小&gt; ：按照指定文件大小查找文件（+n 大于 -n 小于 n 等于）
+
+#根据名称查找/home目录下的hello.txt
+find /home -name hello.txt
+
+#查找/opt目录下，用户名为jack的文件
+find /opt -user jack
+
+#查找整个系统下大于200M的文件
+find / -size +200M
+</code></pre></div></div>
+
+<ul>
+  <li>locate</li>
+</ul>
+
+<p>利用事先建立的数据库快速定位文件路径</p>
+
+<p>无需遍历整个文件系统，查询速度较快</p>
+
+<p>第一次运行前，必须使用 <code class="language-plaintext highlighter-rouge">updatedb</code> 指令创建 locate 数据库</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>locate 搜索文件
+</code></pre></div></div>
+:ET

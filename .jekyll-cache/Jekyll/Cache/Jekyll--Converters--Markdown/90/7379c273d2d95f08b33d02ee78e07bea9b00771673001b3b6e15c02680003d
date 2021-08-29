@@ -1,0 +1,87 @@
+I"<hr />
+
+<h2 id="deque-双向队列">deque 双向队列</h2>
+
+<h2 id="priority_queue-优先队列">priority_queue 优先队列</h2>
+
+<p>普通队列先进先出，元素在队列尾追加在队头删除</p>
+
+<p>而优先队列中，元素被赋予优先级（可自定义），<strong>最高级先出</strong></p>
+
+<p>优先队列具有队列的所有特性，新增在元素存入时自动按优先级排序的特性</p>
+
+<p>本质上是由<strong>堆</strong>实现的，所以查找效率为 O(logn)</p>
+
+<h3 id="定义">定义</h3>
+
+<p><code class="language-plaintext highlighter-rouge">priority_queue&lt;Type, Container, Functional&gt;</code></p>
+<ul>
+  <li>Type：数据类型</li>
+  <li>Container：容器类型（必须是数组实现的容器如deque、vector）</li>
+  <li>Functional：比较方式</li>
+</ul>
+
+<h3 id="基本操作">基本操作</h3>
+
+<pre><code class="language-C++">
+#初始化
+//默认比较方式为降序，即大顶堆
+priority_queue&lt;int&gt; maxQueue;
+//升序队列，小根堆
+priority_queue&lt;int,vector&lt;int&gt;,greater&lt;int&gt;&gt; minQueue;
+//降序队列，大根堆
+priority_queue&lt;int,vector&lt;int&gt;,less&lt;int&gt;&gt; maxQueue;
+
+//判断队列是否为空
+bool empty()    
+//插入新元素
+void push(int elm)
+//删除队头元素
+void pop()
+//访问队头元素
+int top()     
+//返回队列元素数量
+int size()     
+</code></pre>
+
+<h2 id="set">set</h2>
+
+<p>以红黑树为底层数据结构，因此具有<strong>元素自动排序</strong>特性</p>
+
+<h2 id="multiset">multiset</h2>
+
+<p>基本原理和用法与 set 一致，区别就是 multiset 支持插入相同元素，而 set 会进行去重处理
+<img src="https://pic4.zhimg.com/80/v2-ee0e25b62c1da27bb1e2ab021b2f8bf9.png" alt="" /></p>
+<h2 id="unordered_set">unordered_set</h2>
+
+<h2 id="bitset">bitset</h2>
+
+<p>用于保存二进制序列，类似数组结构，每一位只能是 0 或 1</p>
+
+<h3 id="基本操作-1">基本操作</h3>
+
+<ul>
+  <li>初始化
+    <pre><code class="language-C++">//无参构造，4位，默认全为0
+bitset&lt;4&gt; bit1 ;
+//将9转化为8位二进制表示，长度不够前面用 0 填充
+bitset&lt;8&gt; bit2(9);
+//用字符串转换
+string s = "100101";
+bitset&lt;8&gt; bit3(s);
+</code></pre>
+    <p>需要注意的是，若参数的二进制表示比 bitset 的 size 小，则在前面用 0 补充(如上面的栗子)；若比 bitsize 大，参数为整数时取后面部分，参数为字符串时取前面部分</p>
+  </li>
+</ul>
+
+<pre><code class="language-C++">string s = "1011010001";
+bitset&lt;5&gt; bit4(s);// 输出10110
+
+bitset&lt;2&gt; bit5(12);// 12 二进制为 1100 输出 00
+</code></pre>
+
+<h2 id="map">map</h2>
+<p>同样以红黑树为底层数据结构，具有<strong>元素自动排序</strong>特性</p>
+
+<h2 id="unordered_map">unordered_map</h2>
+:ET
