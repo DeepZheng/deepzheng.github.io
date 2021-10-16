@@ -1,0 +1,68 @@
+I"<p>15号晚上阿里官方把代码发到 <a href="https://github.com/oceanbase/miniob">GitHub</a> 上了，开始有活干了2333</p>
+
+<p>把官方给的代码库先 clone 到本地，用 remote 换源更换成自己的私有空仓库 push 一次就变成自己的仓库了。</p>
+
+<p>把代码移到虚拟机里面，使用 VScode 配合 Remote-SSH 连接到虚拟机，后面的开发操作应该都是在 VScode 里面进行了。</p>
+
+<blockquote>
+  <p>PS：用 SSH 连接到虚拟机的时候，<strong>需要用管理员权限打开VScode！！</strong>不然连接的时候就会报 Could not establish a connection to “deep” get bad result from install script… 我被这个问题从15号晚上折磨到16号早上。。翻遍了百度谷歌都找不到个靠谱的答案，还是靠着感觉（创建新进程操作可能是需要管理员权限吧）用管理员权限打开 VScode 才搞定了。吐血</p>
+</blockquote>
+
+<p>接下来先编译依赖库，在项目主目录里面，参考<code class="language-plaintext highlighter-rouge">docs/how_to_build.md</code>里面的操作</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code># build libevent
+git submodule add https://github.com/libevent/libevent deps/libevent
+cd deps
+cd libevent
+git checkout release-2.1.12-stable
+mkdir build
+cd build
+cmake .. -DEVENT__DISABLE_OPENSSL=ON
+make
+sudo make install
+# build google test
+git submodule add https://github.com/google/googletest deps/googletest
+cd deps
+cd googletest
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
+# build jsoncpp
+git submodule add https://github.com/open-source-parsers/jsoncpp.git deps/jsoncpp
+cd deps
+cd jsoncpp
+mkdir build
+cd build
+cmake -DJSONCPP_WITH_TESTS=OFF -DJSONCPP_WITH_POST_BUILD_UNITTEST=OFF ..
+make
+sudo make install
+</code></pre></div></div>
+<p>编译完依赖库之后，再来编译 miniob 项目，先 cd 到项目主目录，然后执行下面的 make 操作</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mkdir build
+cd build
+cmake ..
+make
+</code></pre></div></div>
+
+<p>编译完成之后，生成文件主要在<code class="language-plaintext highlighter-rouge">OceanBase2021/build/bin</code>下面，测试和调试中主要用<code class="language-plaintext highlighter-rouge">observer</code>和<code class="language-plaintext highlighter-rouge">obclient</code>这两个文件</p>
+
+<p>接下来试试开启服务端和客户端</p>
+
+<p>输入下面的代码开启 observer 服务端</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>deep@ubuntu:~/OceanBase2021/build$ ./bin/observer -f ../etc/observer.ini 
+</code></pre></div></div>
+<p>使用 etc文件夹下的 observer.ini 默认配置文件来配置服务端，默认端口6789，可以更改里面的<code class="language-plaintext highlighter-rouge">LOG_CONSOLE_LEVEL</code>参数来更改终端输出的日志信息</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-be84edd48b2ddac2c8e678c348247fac.png" alt="observer服务开启" /></p>
+
+<p>在服务端开启之后另开一个终端来连接 obclient 客户端</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>deep@ubuntu:~/OceanBase2021/build$ ./bin/obclient
+</code></pre></div></div>
+<p>当出现<code class="language-plaintext highlighter-rouge">miniob &gt; </code>交互提示的时候就代表连接成功可以输入sql指令了</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-833c4c91c23dbe99a2ae6eb6cafb40c5.png" alt="obclient连接成功" /></p>
+
+<p>到这里 miniob 的开发环境基本上算是配置完成了。可以开始肝代码了（虽然现在还处于啥都看不懂的阶段。。。<del>官方居然不给说明文档5555</del>）</p>
+:ET

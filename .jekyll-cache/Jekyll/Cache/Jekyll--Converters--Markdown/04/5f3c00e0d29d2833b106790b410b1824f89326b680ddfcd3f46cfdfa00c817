@@ -1,0 +1,94 @@
+I"�<p>懵懵懂懂大致浏览了一遍，加上官方给的数据库小教程和小视频，大致搞明白了项目的大体框架</p>
+
+<h2 id="miniob整体框架">miniOB整体框架</h2>
+
+<p><img src="https://pic4.zhimg.com/80/v2-b58d7046f88b2e39df5d3da4cc4520c6.png" alt="miniOB整体框架" /></p>
+
+<ul>
+  <li>网络模块</li>
+</ul>
+
+<p>负责与客户端交互，收发客户端请求与应答</p>
+
+<p>网络模块代码参考<code class="language-plaintext highlighter-rouge">src/observer/net</code>，主要是Server类。 在这里，采用了libevent作为网络IO工具。libevent的工作原理可以参考<a href="https://libevent.org/">libevent官方网站</a>。 网络服务启动时，会监听端口，接受到新的连接，会将新的连接描述字加入到libevent中。在有网络事件到达时（一般期望是新的消息到达），libevent会调用我们注册的回调函数(参考Server::recv@src/observer/net/server.cpp)。当连接接收到新的消息时，我们会创建一个SessionEvent(参考seda中的事件概念），然后交由seda调度。</p>
+
+<ul>
+  <li>sql解析</li>
+</ul>
+
+<p>SQL解析模块是接收到用户请求，开始正式处理的第一步。它将用户输入的数据转换成内部数据结构，一个语法树。 解析模块的代码在<code class="language-plaintext highlighter-rouge">src/observer/sql/parser</code>下，其中lex_sql.l是词法解析代码，yacc_sql.y是语法解析代码，parse_defs.h中包含了语法树中各个数据结构。 对于词法解析和语法解析，原理概念可以参考《编译原理》。 其中词法解析会把输入（这里比如用户输入的SQL语句）解析成成一个个的“词”，称为token。解析的规则由自己定义，比如关键字SELECT，或者使用正则表达式，比如”[A-Za-z_]+[A-Za-z0-9_]” 表示一个合法的标识符。 对于语法分析，它根据词法分析的结果（一个个token），按照编写的规则，解析成“有意义”的“话”，并根据这些参数生成自己的内部数据结构。比如SELECT * FROM T，可以据此生成一个简单的查询语法树，并且知道查询的columns是“”，查询的relation是”T”。 NOTE：在查询相关的地方，都是用关键字relation、attribute，而在元数据中，使用table、field与之对应。</p>
+
+<ul>
+  <li>计划执行</li>
+</ul>
+
+<p>根据语法树描述，执行并生成结果返回客户端</p>
+
+<p>在miniob的实现中，SQL解析之后，就直接跳到了计划执行，中间略去了很多重要的阶段，但是不影响最终结果。 计划执行的代码在<code class="language-plaintext highlighter-rouge">src/observer/sql/executor/</code>下，主要参考execute_stage.cpp的实现。</p>
+
+<ul>
+  <li>会话管理</li>
+</ul>
+
+<p><code class="language-plaintext highlighter-rouge">src/observer/session</code>，session_stage.cpp，管理用户连接、调整某个连接的参数</p>
+<ul>
+  <li>元数据管理</li>
+</ul>
+
+<p>元数据是指数据库一些核心概念，包括db、table、field、index等，记录它们的信息。比如db，记录db文件所属目录；field，记录字段的类型、长度、偏移量等,<code class="language-plaintext highlighter-rouge">src/observer/storage/common</code></p>
+
+<ul>
+  <li>客户端</li>
+</ul>
+
+<p>作为测试工具，接收用户请求，向服务端发起请求</p>
+
+<h3 id="初赛必做题">初赛必做题</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>名称</th>
+      <th>描述</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>优化 buffer pool</td>
+      <td>必做。实现LRU淘汰算法或其它淘汰算法</td>
+    </tr>
+    <tr>
+      <td>drop table</td>
+      <td>必做。删除表。清除表相关的资源。</td>
+    </tr>
+    <tr>
+      <td>实现update功能</td>
+      <td>必做。update单个字段即可。</td>
+    </tr>
+    <tr>
+      <td>增加date字段</td>
+      <td>必做。date测试不会超过2038年2月。注意处理非法的date输入。</td>
+    </tr>
+    <tr>
+      <td>查询元数据校验</td>
+      <td>必做。查询语句中存在不存在的列名、表名等，需要返回失败。需要检查代码，判断是否需要返回错误的地方都返回错误了。</td>
+    </tr>
+    <tr>
+      <td>多表查询</td>
+      <td>必做。支持多张表的笛卡尔积关联查询。需要实现select * from t1,t2; select t1.,t2. from t1,t2;以及select t1.id,t2.id from t1,t2;查询可能会带条件。查询结果展示格式参考单表查询。每一列必须带有表信息，比如:t1.id \ t2.id 1 \ 1</td>
+    </tr>
+    <tr>
+      <td>聚合运算</td>
+      <td>需要实现max/min/count/avg.包含聚合字段时，只会出现聚合字段。聚合函数中的参数不会是表达式，比如age +1</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><code class="language-plaintext highlighter-rouge">src/observer/sql/executor/execute_stage.cpp</code>里面完成基础功能（insert,drop,update之类的）
+<img src="https://pic4.zhimg.com/80/v2-c2acefeb29c6c594694dd36daf8ee64d.png" alt="Image" /></p>
+
+<p>LRU的优化应该是在<code class="language-plaintext highlighter-rouge">src/observer/storage/default/disk_buffer_pool</code>里面
+<img src="https://pic4.zhimg.com/80/v2-85b05d390ccff06b8bfd1aab4455d59e.png" alt="Image" /></p>
+
+<p>今天先这样吧，眼睛花了</p>
+:ET

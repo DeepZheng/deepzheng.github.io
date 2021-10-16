@@ -1,0 +1,165 @@
+I"�$<p>15号晚上阿里官方把代码发到 <a href="https://github.com/oceanbase/miniob">GitHub</a> 上了，开始有活干了2333</p>
+
+<h2 id="配置开发环境">配置开发环境</h2>
+
+<p>把官方给的代码库先 clone 到本地，用 remote 换源更换成自己的私有空仓库 push 一次就变成自己的仓库了。</p>
+
+<p>把代码移到虚拟机里面，使用 VScode 配合 Remote-SSH 连接到虚拟机，后面的开发操作应该都是在 VScode 里面进行了。</p>
+
+<blockquote>
+  <p>PS：用 SSH 连接到虚拟机的时候，<strong>需要用管理员权限打开VScode！！</strong>不然连接的时候就会报 Could not establish a connection to “deep” get bad result from install script… 我被这个问题从15号晚上折磨到16号早上。。翻遍了百度谷歌都找不到个靠谱的答案，还是靠着感觉（创建新进程操作可能是需要管理员权限吧）用管理员权限打开 VScode 才搞定了。吐血</p>
+</blockquote>
+
+<p>接下来先编译依赖库，在项目主目录里面，参考<code class="language-plaintext highlighter-rouge">docs/how_to_build.md</code>里面的操作</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code># build libevent
+git submodule add https://github.com/libevent/libevent deps/libevent
+cd deps
+cd libevent
+git checkout release-2.1.12-stable
+mkdir build
+cd build
+cmake .. -DEVENT__DISABLE_OPENSSL=ON
+make
+sudo make install
+# build google test
+git submodule add https://github.com/google/googletest deps/googletest
+cd deps
+cd googletest
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
+# build jsoncpp
+git submodule add https://github.com/open-source-parsers/jsoncpp.git deps/jsoncpp
+cd deps
+cd jsoncpp
+mkdir build
+cd build
+cmake -DJSONCPP_WITH_TESTS=OFF -DJSONCPP_WITH_POST_BUILD_UNITTEST=OFF ..
+make
+sudo make install
+</code></pre></div></div>
+<p>编译完依赖库之后，再来编译 miniob 项目，先 cd 到项目主目录，然后执行下面的 make 操作</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mkdir build
+cd build
+cmake ..
+make
+</code></pre></div></div>
+
+<p>编译完成之后，生成文件主要在<code class="language-plaintext highlighter-rouge">OceanBase2021/build/bin</code>下面，测试和调试中主要用<code class="language-plaintext highlighter-rouge">observer</code>和<code class="language-plaintext highlighter-rouge">obclient</code>这两个文件</p>
+
+<p>接下来试试开启服务端和客户端</p>
+
+<p>输入下面的代码开启 observer 服务端</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>deep@ubuntu:~/OceanBase2021/build$ ./bin/observer -f ../etc/observer.ini 
+</code></pre></div></div>
+<p>使用 etc文件夹下的 observer.ini 默认配置文件来配置服务端，默认端口6789，可以更改里面的<code class="language-plaintext highlighter-rouge">LOG_CONSOLE_LEVEL</code>参数来更改终端输出的日志信息</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-be84edd48b2ddac2c8e678c348247fac.png" alt="observer服务开启" /></p>
+
+<p>在服务端开启之后另开一个终端来连接 obclient 客户端</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>deep@ubuntu:~/OceanBase2021/build$ ./bin/obclient
+</code></pre></div></div>
+<p>当出现<code class="language-plaintext highlighter-rouge">miniob &gt; </code>交互提示的时候就代表连接成功可以输入sql指令了</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-833c4c91c23dbe99a2ae6eb6cafb40c5.png" alt="obclient连接成功" /></p>
+
+<p>到这里 miniob 的开发环境基本上算是配置完成了。可以开始肝代码了（虽然现在还处于啥都看不懂的阶段。。。<del>官方居然不给说明文档5555</del>）</p>
+
+<h2 id="miniob整体框架">miniOB整体框架</h2>
+
+<p>懵懵懂懂大致浏览了一遍，加上官方给的数据库小教程和小视频，大致搞明白了项目的大体框架
+<img src="https://pic4.zhimg.com/80/v2-b58d7046f88b2e39df5d3da4cc4520c6.png" alt="miniOB整体框架" /></p>
+
+<ul>
+  <li>网络模块</li>
+</ul>
+
+<p>负责与客户端交互，收发客户端请求与应答</p>
+
+<p>网络模块代码参考<code class="language-plaintext highlighter-rouge">src/observer/net</code>，主要是Server类。 在这里，采用了libevent作为网络IO工具。libevent的工作原理可以参考<a href="https://libevent.org/">libevent官方网站</a>。 网络服务启动时，会监听端口，接受到新的连接，会将新的连接描述字加入到libevent中。在有网络事件到达时（一般期望是新的消息到达），libevent会调用我们注册的回调函数(参考Server::recv@src/observer/net/server.cpp)。当连接接收到新的消息时，我们会创建一个SessionEvent(参考seda中的事件概念），然后交由seda调度。</p>
+
+<ul>
+  <li>sql解析</li>
+</ul>
+
+<p>SQL解析模块是接收到用户请求，开始正式处理的第一步。它将用户输入的数据转换成内部数据结构，一个语法树。 解析模块的代码在<code class="language-plaintext highlighter-rouge">src/observer/sql/parser</code>下，其中lex_sql.l是词法解析代码，yacc_sql.y是语法解析代码，parse_defs.h中包含了语法树中各个数据结构。 对于词法解析和语法解析，原理概念可以参考《编译原理》。 其中词法解析会把输入（这里比如用户输入的SQL语句）解析成成一个个的“词”，称为token。解析的规则由自己定义，比如关键字SELECT，或者使用正则表达式，比如”[A-Za-z_]+[A-Za-z0-9_]” 表示一个合法的标识符。 对于语法分析，它根据词法分析的结果（一个个token），按照编写的规则，解析成“有意义”的“话”，并根据这些参数生成自己的内部数据结构。比如SELECT * FROM T，可以据此生成一个简单的查询语法树，并且知道查询的columns是“”，查询的relation是”T”。 NOTE：在查询相关的地方，都是用关键字relation、attribute，而在元数据中，使用table、field与之对应。</p>
+
+<ul>
+  <li>计划执行</li>
+</ul>
+
+<p>根据语法树描述，执行并生成结果返回客户端</p>
+
+<p>在miniob的实现中，SQL解析之后，就直接跳到了计划执行，中间略去了很多重要的阶段，但是不影响最终结果。 计划执行的代码在<code class="language-plaintext highlighter-rouge">src/observer/sql/executor/</code>下，主要参考execute_stage.cpp的实现。</p>
+
+<ul>
+  <li>会话管理</li>
+</ul>
+
+<p><code class="language-plaintext highlighter-rouge">src/observer/session</code>，session_stage.cpp，管理用户连接、调整某个连接的参数</p>
+<ul>
+  <li>元数据管理</li>
+</ul>
+
+<p>元数据是指数据库一些核心概念，包括db、table、field、index等，记录它们的信息。比如db，记录db文件所属目录；field，记录字段的类型、长度、偏移量等,<code class="language-plaintext highlighter-rouge">src/observer/storage/common</code></p>
+
+<ul>
+  <li>客户端</li>
+</ul>
+
+<p>作为测试工具，接收用户请求，向服务端发起请求</p>
+
+<h2 id="初赛必做题">初赛必做题</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>名称</th>
+      <th>描述</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>优化 buffer pool</td>
+      <td>必做。实现LRU淘汰算法或其它淘汰算法</td>
+    </tr>
+    <tr>
+      <td>drop table</td>
+      <td>必做。删除表。清除表相关的资源。</td>
+    </tr>
+    <tr>
+      <td>实现update功能</td>
+      <td>必做。update单个字段即可。</td>
+    </tr>
+    <tr>
+      <td>增加date字段</td>
+      <td>必做。date测试不会超过2038年2月。注意处理非法的date输入。</td>
+    </tr>
+    <tr>
+      <td>查询元数据校验</td>
+      <td>必做。查询语句中存在不存在的列名、表名等，需要返回失败。需要检查代码，判断是否需要返回错误的地方都返回错误了。</td>
+    </tr>
+    <tr>
+      <td>多表查询</td>
+      <td>必做。支持多张表的笛卡尔积关联查询。需要实现select * from t1,t2; select t1.,t2. from t1,t2;以及select t1.id,t2.id from t1,t2;查询可能会带条件。查询结果展示格式参考单表查询。每一列必须带有表信息，比如:t1.id \ t2.id 1 \ 1</td>
+    </tr>
+    <tr>
+      <td>聚合运算</td>
+      <td>需要实现max/min/count/avg.包含聚合字段时，只会出现聚合字段。聚合函数中的参数不会是表达式，比如age +1</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>在几乎没有注释的代码堆里面爬了半天，总算是看出点门道了（<del>指知道在哪里写题目了</del>）</p>
+
+<p>在<code class="language-plaintext highlighter-rouge">src/observer/sql/executor/execute_stage.cpp</code>里面完成基础功能（insert,drop,update之类的）
+<img src="https://pic4.zhimg.com/80/v2-c2acefeb29c6c594694dd36daf8ee64d.png" alt="" /></p>
+
+<p>LRU的优化应该是在<code class="language-plaintext highlighter-rouge">src/observer/storage/default/disk_buffer_pool</code>里面
+<img src="https://pic4.zhimg.com/80/v2-85b05d390ccff06b8bfd1aab4455d59e.png" alt="" /></p>
+
+<p>今天先这样吧，眼睛都花了。写（chao）会作业去</p>
+:ET
