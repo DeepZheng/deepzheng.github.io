@@ -1,4 +1,4 @@
-I">
+I"x
 <ul>
   <li><a href="#xshell-与-xftp">Xshell 与 Xftp</a></li>
   <li><a href="#帮助指令">帮助指令</a></li>
@@ -15,5 +15,6 @@
     </ul>
   </li>
   <li><a href="#搜索查找">搜索查找</a></li>
+  <li><a href="#压缩和解压">压缩和解压</a></li>
 </ul>
 :ET
