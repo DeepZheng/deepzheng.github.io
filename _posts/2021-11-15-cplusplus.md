@@ -2,7 +2,7 @@
 layout: post
 title: "C++知识点总结"
 date: 2021-11-15
-tag: C++,八股
+tag: C++
 ---  
 
 1. static 关键字在 C 和 C++ 中各自有哪些不同用法
