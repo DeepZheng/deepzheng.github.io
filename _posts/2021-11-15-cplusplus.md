@@ -100,3 +100,41 @@ vector 在初始化的时候，会在内存中分配一块连续的空间，大�
 * reserve 函数实现扩容只会改变 vector 的 capacity，不会改变 size
 * size 会改变容器的 capacity 和 size 大小，并且创建对象，如果申请的 n 比原来的 size 小，多出的元素会被丢弃掉
 
+### map 和 unordered_map 区别
+
+
+## 虚函数
+
+### 构造函数能不能加 virtual，析构函数呢
+
+* 构造函数不可以。
+
+  从继承的概念上讲，总是要先构造父类对象，然后再构造子类对象。虚函数的作用在于通过父类的指针或引用来调用子类的成员函数，而构造函数是在创建对象的时候自己主动调用的，子类在调用构造函数的时候自动调用了基类的构造函数。因此声明成虚函数并没有意义。
+
+* 析构函数可以。
+  我们知道，为了能够正确地调用对象的析构函数，一般要求具有层次结构的基类定义其析构函数为虚函数。因为在 delete 一个抽象类指针的时候，必须要通过**虚函数找到真正的析构函数**
+  ```C++
+  class Base{
+    public:
+      Base(){}
+      virtual ~Base(){}
+  };
+
+  class Derived : public Base{
+    public:
+      Derived(){}
+      ~Derived(){}
+  };
+
+  void test(){
+    Base *p;
+    p = new Derived;
+    delete p;
+  }
+  ```
+  这是正确的用法，会发生动态绑定，他会先调用 Derived 的析构函数，然后是 Base 的析构函数
+
+  如果析构函数不加 virtual，`delete p` 只会执行 Base 的析构函数，而不是真正的 Derived 析构函数（因为不是 virtual 函数，所以调用的函数依赖于指向静态类型，即 Base）
+
+
+
