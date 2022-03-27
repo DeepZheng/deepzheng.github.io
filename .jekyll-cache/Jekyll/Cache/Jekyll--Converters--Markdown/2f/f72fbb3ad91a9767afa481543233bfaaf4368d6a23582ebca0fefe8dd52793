@@ -1,0 +1,187 @@
+I"�7<blockquote>
+  <p>本文基于 MySQL8.0 Innodb</p>
+</blockquote>
+
+<h2 id="查找过程">查找过程</h2>
+
+<p>首先我们创建这样一个表</p>
+
+<pre><code class="language-sq">CREATE TABLE info(
+    id int(10) AUTO_INCREMENT,
+    name VARCHAR(100),
+    age TINYINT(4),
+    PRIMARY KEY (id),
+    INDEX IDX_AGE (age)
+)ENGINE = innodb CHARSET=UTF8;
+</code></pre>
+
+<p>自增的 id 作为主键，name 和 age 创建了一个联合索引</p>
+
+<p>然后我们插入下面的数据</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">info</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">age</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="s1">'刘洪'</span><span class="p">,</span><span class="mi">29</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">info</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">age</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="s1">'王五'</span><span class="p">,</span> <span class="mi">32</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">info</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">age</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="s1">'张三'</span><span class="p">,</span><span class="mi">12</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">info</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">age</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="s1">'刘九'</span><span class="p">,</span><span class="mi">46</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">info</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">age</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="s1">'郑七'</span><span class="p">,</span><span class="mi">46</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p><img src="https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20211125223326049.png" alt="此时的数据" /></p>
+
+<p>此时，id 作为主键，默认是聚簇索引，其叶结点存的是整行的数据</p>
+
+<p><img src="https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20211125225139407.png" alt="image-20211125225139407" /></p>
+
+<p>而  age 作为普通索引，非聚簇索引，其叶结点存的是聚簇索引的指针</p>
+
+<p><img src="https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20211125225403561.png" alt="以age为例" /></p>
+
+<h3 id="查询">查询</h3>
+
+<ul>
+  <li>如果查询条件为主键（聚簇索引），则只需扫描一次 b+ 树即可通过聚簇索引定位到要查找的行记录数据。</li>
+</ul>
+
+<p>如 <code class="language-plaintext highlighter-rouge">SELECT * FROM info WHERE id = 1</code></p>
+
+<ul>
+  <li>如果查询条件为普通索引（非聚簇索引），那么需要扫描两次 b+ 树，第一次通过扫描普通索引定位到聚簇索引的值，然后第二次扫描通过聚簇索引的值定位到要查找的行记录数据</li>
+</ul>
+
+<p>如 <code class="language-plaintext highlighter-rouge">SELECT * FROM info WHERE age = 12</code></p>
+
+<p><img src="https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20211125230341568.png" alt="第一次查询" /></p>
+
+<p><img src="https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20211125230424605.png" alt="第二次查询" /></p>
+
+<p>这样的查询流程就叫做<strong>回表查询</strong></p>
+
+<p>回表查询需要扫描两次索引树，因此性能上会比较低一些</p>
+
+<p>所以我们可以通过<strong>索引覆盖</strong>来提高查询性能</p>
+
+<h2 id="索引覆盖">索引覆盖</h2>
+
+<p>那么什么叫索引覆盖呢？</p>
+
+<p>顾名思义，我们创建的索引覆盖了要查询的字段，因此只需要扫描一次索引树就可以取到我们要的结果。</p>
+
+<p>就像这样 <code class="language-plaintext highlighter-rouge">SELECT age, id FROM info WHERE age = 46; </code></p>
+
+<p>age 索引树叶结点中存储了 age 和 id 的值，而我们只需要 age 和 id 的值，因此只需要通过一次查询就可以得到结果，无需回表，速度更快</p>
+
+<p>如果我们考虑这样的查询</p>
+
+<p><code class="language-plaintext highlighter-rouge">SELCT age, name ,id FROM info WHERE age = 46;</code></p>
+
+<p>在前面加个 EXPLAIN 分析一下</p>
+
+<p><img src="https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20211125232108664.png" alt="" /></p>
+
+<p>可以看到，Extra 列是NULL，说明进行了回表查询。因为 age 索引树上只存了 age 和 id 的值，要找到 name，只能回到聚簇索引树上再进行一次查询</p>
+
+<p>怎么优化才能只需要查一次表呢？答案是建立一个联合索引</p>
+
+<h2 id="联合索引">联合索引</h2>
+
+<p>我们建立一个索引组合</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">DROP</span> <span class="k">INDEX</span> <span class="n">IDX_AGE</span> <span class="k">ON</span> <span class="n">info</span><span class="p">;</span>
+<span class="k">CREATE</span> <span class="k">INDEX</span> <span class="n">IDX_AGE_NAME</span> <span class="k">ON</span> <span class="n">info</span><span class="p">(</span><span class="n">age</span><span class="p">,</span><span class="n">name</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>再进行一次查询</p>
+
+<p><img src="https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20211125232613756.png" alt="image-20211125232613756" /></p>
+
+<p>可以看到，这次建立了联合索引之后，age、name、id 的值都在一个索引树上，实现了索引覆盖，此时就不需要回表查询了。因此 Extra 列显示的是 Using Index</p>
+
+<h3 id="联合索引树结构">联合索引树结构</h3>
+
+<p>单索引的树很好想象，那么对于联合索引，它的树又长什么样子呢？我上网一查，发现能把结构讲清楚的文章很少，这些文章里面，又有很多都是复制的同一篇。。。<a href="https://www.cnblogs.com/wuchanming/p/9185661.html">这篇文章</a>介绍的结构大概是这样的</p>
+
+<p><img src="https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20211202204011431.png" alt="image-20211202204011431" /></p>
+
+<p>它的大致意思就是，联合索引在 b+ 树的非叶子节点中只会存储联合索引中的第一个索引字段的值，叶结点才会存整个联合索引的数据，并且按照索引的顺序进行排序</p>
+
+<p>但是直觉告诉我，这样的结构是不对的。我的理解是既然建立联合索引了，那索引里的所有字段应该都是合在一起来建树的，否则按上图的方式岂不是相当于建了一个微型的聚簇索引，那不还是相当于单索引么。</p>
+
+<p>然后我又搜到了<a href="https://blog.csdn.net/feichitianxia/article/details/107997795">另一篇文章</a>，这个应该才是正解。</p>
+
+<p>借用一下他的图</p>
+
+<p>假设我们有这样一个表</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-8ed0ac5ae4b6f7368a70b19f58950982.png" alt="Image" /></p>
+
+<p>其中 a 是自增的主键，我们对（b, c, d）建立一个联合索引</p>
+
+<p>那么这个联合索引在 b+ 树上的结构就是这样的</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-53a14a8c1351475cde28651a02b1555b.png" alt="Image" /></p>
+
+<p>和我想的一样，对于<strong>非叶子节点</strong>，同样也会存整个联合索引的键值；又因为这个联合索引本质上还是个<strong>非聚簇索引</strong>，因此在<strong>叶子节点</strong>里的 data 部分还会存一个联合索引所在行的<strong>主键值</strong>（上图紫色部分）</p>
+
+<h3 id="联合索引的最左匹配原则">联合索引的最左匹配原则</h3>
+
+<p>对于联合索引来说，相比于单列索引，它的单节点中是多列的，因此需要按照顺序来进行匹配。</p>
+
+<p>假设我们有这样一条查询语句</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SELECT</span> <span class="o">*</span> <span class="k">fROM</span> <span class="n">T</span> <span class="k">WHERE</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">AND</span> <span class="k">c</span> <span class="o">=</span> <span class="mi">5</span> <span class="k">AND</span> <span class="n">d</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
+</code></pre></div></div>
+
+<ol>
+  <li>
+    <p>存储引擎首先从根节点开始查找，并根据第一个索引字段进行匹配，1&lt;=1&lt;56，因此从这两个索引中间读到下一个节点的磁盘页</p>
+  </li>
+  <li>
+    <p>将这一页加载进内存中后，又进行一次判断，1&lt;= 1 &lt; 12，继续通过指针加载下一个磁盘页</p>
+  </li>
+  <li>
+    <p>此时处于叶子节点中，存储引擎按索引顺序进行逐个匹配，最终获取到目标行，并根据索引值关联的<strong>主键</strong>进行<strong>回表查询</strong></p>
+  </li>
+</ol>
+
+<p>通过上面的流程和图，不难发现，对于叶结点的链表，第一列（索引 b 列）从左到右是递增的。而第二列是在第一列相等的范围内实现的递增，第三列则是在第二列相等的范围内实现的递增。</p>
+
+<p>换句话说，我们创建的（b，c，d）的联合索引，其实就是相当于创建了（b），（b，c），（b，c，d）三个索引。任何查找条件不按索引顺序来的，都没办法用到这个索引</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>这样的结构其实就和电话本（或者任何查找联系人的东东）很类似，联合索引就相当于姓名，电话本里的排列顺序是不是就是先按姓（首字母排序）来排，然后依次名的第二个字，第三个字。你要查找一个联系人的时候，是不是也是按照先姓后名的顺序来找的呢？如果你只知道名字不知道姓，比如说张秋菊你只知道秋菊或者一个菊，那查找起来就比较困难了。
+</code></pre></div></div>
+
+<h3 id="联合索引的范围查询">联合索引的范围查询</h3>
+
+<p>由于联合索引树的结构，导致对于联合索引的查询必须严格遵守<strong>最左匹配原则</strong>，如（a,b,c）的联合索引，满足的查询顺序只能是(a)(a,b)(a,b,c)。那么对于范围查询呢？</p>
+
+<p>考虑下面的查询语句</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SELECT</span> <span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">,</span><span class="k">c</span> <span class="k">FROM</span> <span class="n">t</span> <span class="k">WHERE</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">AND</span> <span class="n">b</span> <span class="o">&gt;</span> <span class="mi">20</span> <span class="k">AND</span> <span class="k">c</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>首先，a 作为第一列，肯定用到了索引；而 b 是在 a 列值相等情况下实现的有序，因此也可以用到索引；而 c 列就不行了，因为它之前的 b 列并不是固定的，所以在经过 a 和 b 筛选出的范围内 c 并不是有序的，因此也就无法使用索引来查询了</p>
+
+<p>但是，神奇的事情发生了。当我用 EXPLAIN 查询上面的语句的时候，发现并没有出现回表查询的情况，c 列仍然正常用到了索引</p>
+
+<p><img src="https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20211126000109751.png" alt="image-20211126000109751" /></p>
+
+<p>这是为什么呢？我上网查了一下，发现 MySQL 从 5.6 之后就用了个叫<strong>索引下推</strong>的东西，所以使得在范围查询之后还可以继续使用索引。真是神奇，有空可以好好研究一下这个索引下推</p>
+
+<p><img src="https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20211125235731608.png" alt="image-20211125235731608" /></p>
+
+<h2 id="查询速度比较">查询速度比较</h2>
+
+<p>回到上面的回表查询，考虑下面的查询语句</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">info</span> <span class="k">WHERE</span> <span class="n">age</span> <span class="o">=</span> <span class="mi">46</span> <span class="k">AND</span> <span class="n">name</span> <span class="o">=</span> <span class="s1">'郑七'</span><span class="p">;</span>
+
+<span class="k">SELECT</span> <span class="n">age</span><span class="p">,</span> <span class="n">name</span> <span class="p">,</span><span class="n">id</span> <span class="k">FROM</span> <span class="n">info</span> <span class="k">WHERE</span> <span class="n">age</span> <span class="o">=</span> <span class="mi">46</span> <span class="k">AND</span> <span class="n">name</span> <span class="o">=</span> <span class="s1">'郑七'</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><img src="https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20211125233529260.png" alt="image-20211125233529260" /></p>
+
+<p><img src="https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20211125233547728.png" alt="image-20211125233547728" /></p>
+
+<p>需要回表查询的语句耗时是只要单次查询的两倍，我的表还是只有 5 条数据的小表，如果是千万级别的大表，那差距就很大了。</p>
+
+:ET

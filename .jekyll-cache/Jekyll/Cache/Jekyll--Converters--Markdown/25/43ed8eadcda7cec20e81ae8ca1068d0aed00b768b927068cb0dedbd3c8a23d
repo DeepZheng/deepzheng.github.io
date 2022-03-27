@@ -1,0 +1,204 @@
+I"�
+<h2 id="面向对象设计原则">面向对象设计原则</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>原则</th>
+      <th>解释</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>单一职责原则</td>
+      <td>类的指责单一，对外只提供一种功能</td>
+    </tr>
+    <tr>
+      <td>开闭原则</td>
+      <td><strong>类的改动时通过增加代码进行的，而不是修改源代码</strong></td>
+    </tr>
+    <tr>
+      <td>里氏代换原则</td>
+      <td><strong>多态</strong>，任何抽象类出现的地方都可以用他的实现类进行替换</td>
+    </tr>
+    <tr>
+      <td>依赖倒转原则</td>
+      <td><strong>依赖于抽象（接口），不要依赖具体的实现类，也就是针对接口编程</strong></td>
+    </tr>
+    <tr>
+      <td>接口隔离原则</td>
+      <td>一个接口应该只提供一种对外功能</td>
+    </tr>
+    <tr>
+      <td>合成复用原则</td>
+      <td>如果使用继承，会导致父类的任何变化都可能影响到子类的行为，对于继承和组合，尽量使用<strong>组合</strong></td>
+    </tr>
+    <tr>
+      <td>迪米特法则</td>
+      <td><strong>一个对象应该对其他对象尽可能少的了解，从而降低各个对象之间的耦合，提供系统可维护性</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="开闭原则">开闭原则</h3>
+
+<p><strong>对扩展开放，对修改关闭</strong></p>
+
+<pre><code class="language-C++">
+//计算器抽象类
+class AbstractCalculator{
+public:
+    virtual void setOperator() = 0;
+    virtual int getResult() = 0;
+};
+
+//加法计算器类
+class PlusCaculator : public AbstractCaculator{
+    public:
+        virtual void setOperatorNumber(int a, int b){
+            this-&gt;m_a = a;
+            this-&gt;m_b = b;
+        }
+        virtual int getResult(){
+            return m_a + m_b;
+        }
+}
+
+//减法计算器类
+class MinusCaculator : public AbstractCaculator{
+    public:
+        virtual void setOperatorNumber(int a, int b){
+            this-&gt;m_a = a;
+            this-&gt;m_b = b;
+        }
+        virtual int getResult(){
+            return m_a - m_b;
+        }
+};
+//乘法
+class MulCaculator : public AbstractCaculator{
+    public:
+        virtual void setOperatorNumber(int a, int b){
+            this-&gt;m_a = a;
+            this-&gt;m_b = b;
+        }
+        virtual int getResult(){
+            return m_a *+* m_b;
+        }
+};
+
+class DivCaculator : public AbstractCaculator{
+    public:
+        virtual void setOperatorNumber(int a, int b){
+            this-&gt;m_a = a;
+            this-&gt;m_b = b;
+        }
+        virtual int getResult(){
+            return m_a / m_b;
+        }
+}
+
+void test(){
+    AbstractCaculator * caculator = new PlusCaculator;
+    caculator-&gt;setOperatorNumber(10, 20);
+    cout&lt;&lt;caculator-&gt;getResult&lt;&lt;endl;
+
+    caculator = new MinusCaculator;
+    caculator-&gt;setOperatorNumber(10, 20);
+    cout&lt;&lt;caculator-&gt;getResult&lt;&lt;endl;
+}
+</code></pre>
+<h3 id="迪米特法则">迪米特法则</h3>
+
+<p><strong>知道的越少，建立的耦合关系就越弱</strong></p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-e346d5428dffc2060deca554091ba453.png" alt="Image" /></p>
+
+<pre><code class="language-C++">
+class AbstractBuilding{
+    public:
+        virtual void sale() = 0;
+        virtual string getQuality() = 0;
+};
+
+
+class BuildingA : public AbstractBuilding{
+    public : 
+        BuildingA(){
+            mQuality = "高品质";
+        }
+        virtual void sale(){
+            cout&lt;&lt; mQuality &lt;&lt;endl;
+        }
+        string getQuality(){
+            return mQuality;
+        }
+    private:
+        string mQuality;
+};
+
+
+class BuildingB : public AbstractBuilding{
+    public : 
+        BuildingA(){
+            mQuality = "中品质";
+        }
+        virtual void sale(){
+            cout&lt;&lt; mQuality &lt;&lt;endl;
+        }
+        string getQuality(){
+            return mQuality;
+        }
+    private:
+        string mQuality;
+};
+
+class BuildingC : public AbstractBuilding{
+    public : 
+        BuildingC(){
+            mQuality = "低品质";
+        }
+        virtual void sale(){
+            cout&lt;&lt; mQuality &lt;&lt;endl;
+        }
+        string getQuality(){
+            return mQuality;
+        }
+    private:
+        string mQuality;
+};
+
+//中介类
+class Media{
+    public:
+        Media(){
+
+        }
+        AbstractBuilding* findMyBuilding(string quality){
+            for(auto building : vBuilding){
+                if(building-&gt;getQuality == quality){
+                    return building ;
+                }
+            }
+            return NULL;
+        }
+
+        ~Media(){
+            for(auto building : vBuilding){
+                delete building;
+            }
+        }
+        vector&lt;AbstractBuilding*&gt; vBuilding;    
+}
+
+void test(){
+    Media* media = new Media;
+    AbstractBuilding* building = media-&gt;findMyBuilding("高品质");
+    if(building != NULL){
+        build-&gt;sale();
+    }else{
+        cout&lt;&lt;"No suitable"&lt;&lt;endl;
+    }
+}
+</code></pre>
+:ET

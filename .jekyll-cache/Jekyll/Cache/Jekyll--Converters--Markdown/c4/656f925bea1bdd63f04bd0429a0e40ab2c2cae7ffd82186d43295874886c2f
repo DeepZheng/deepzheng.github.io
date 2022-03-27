@@ -1,0 +1,16 @@
+I"4
+<ul>
+  <li><a href="#从源代码到可执行程序中间的过程">从源代码到可执行程序，中间的过程</a></li>
+  <li><a href="#栈和堆">栈和堆</a></li>
+  <li><a href="#内存泄露">内存泄露</a></li>
+  <li><a href="#c-三大特性">C++ 三大特性</a></li>
+  <li><a href="#智能指针">智能指针</a></li>
+  <li><a href="#vector-扩容机制">vector 扩容机制</a></li>
+  <li><a href="#map-和-unordered_map-区别">map 和 unordered_map 区别</a></li>
+  <li><a href="#虚函数">虚函数</a></li>
+  <li><a href="#构造函数能不能加-virtual析构函数呢">构造函数能不能加 virtual，析构函数呢</a></li>
+  <li><a href="#static">static</a></li>
+  <li><a href="#const-作用">const 作用</a></li>
+  <li><a href="#inline-内联函数">inline 内联函数</a></li>
+</ul>
+:ET

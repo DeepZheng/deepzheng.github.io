@@ -1,0 +1,91 @@
+I"�<p>在完成 drop_table 功能之后，看官方给出的 check 信息里面并没有通过 drop 的测试，爬了半天钉钉群，发现应该是没有做元数据校验导致的</p>
+
+<p>元数据校验主要是查询语句中是否存在不存在的列名、表名等，需要返回失败。需要检查代码，判断是否需要返回错误的地方都返回错误了。</p>
+
+<p>现在没有元数据校验，在 drop table 之后，虽然 <code class="language-plaintext highlighter-rouge">show tables</code> 并没有这个表的信息了，但是如果 <code class="language-plaintext highlighter-rouge">select * </code> 来查询这个表，会返回 No data</p>
+
+<p>而正常情况下应该是要返回 FAILURE 的</p>
+
+<p>找到 <code class="language-plaintext highlighter-rouge">RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_event)</code> ，这个函数主要是解析 select 数据结构并放到 <code class="language-plaintext highlighter-rouge">create_selection_executor</code> 里面返回查询结果</p>
+
+<p>因为现在没有什么头绪，所以我直接把 rc 返回值不是 SUCCESS 的所有 case 的 response 都设置成 FAILURE 了</p>
+
+<p>然后还有会报 <code class="language-plaintext highlighter-rouge">core dump</code> 错误直接服务端和客户端崩溃的情况</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>select * from;
+select *, id from t;
+select id fromt;
+</code></pre></div></div>
+<p>上面几种情况都会导致 core dump 情况的发生</p>
+
+<p>通过打断点加观察日志，定位到程序运行到 parse_stage 时停止，猜测应该是在解析 select 的时候因为语句错误导致的。但是对于如何改正我现在依然是一点头绪都没有。。。尝试把传给 event 的 error 信息注释掉，直接<code class="language-plaintext highlighter-rouge">set_response("FAILURE\n");</code> 强制全返回一个 FAILURE （和上面一样的操作2333）</p>
+
+<p>至少现在看起来查询结果倒是正常的2333</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-5fca054f3ea969b589031ba3f0b998d3.png" alt="Image" /></p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-747ee2f37bcf4f7372b6812dfdc16579.png" alt="Image" /></p>
+
+<p>看21号下午官方拉取测试情况咋样了，有问题再说吧</p>
+
+<p>先把 update 做了</p>
+
+<p>总体方法还是和 drop table 差不多的操作，一路改过来直到 table.cpp ，加一个 <code class="language-plaintext highlighter-rouge">RC Table::update_record(Trx *trx, const char *attribute_name, const Value *value, ConditionFilter *filter, int *updated_count) </code>函数，大概思路应该就是在对应的 table 里面找到条件对应的 record ，找到<code class="language-plaintext highlighter-rouge">attribute_name</code>相同的列并把值改成 <code class="language-plaintext highlighter-rouge">value</code> 然后再存回去。注意最后一个参数 <code class="language-plaintext highlighter-rouge">update_count</code>，这个应该是保存修改的 record 的个数的</p>
+
+<p>table 类中提供了 scan_record 可以让我们直接调用
+<code class="language-plaintext highlighter-rouge">scan_record(Trx *trx, ConditionFilter *filter, int limit, void *context, RC (*record_reader)(Record *record, void *context))</code></p>
+
+<p>。。。此处省略八百字。。。</p>
+
+<p>这个东西，比我想象的还要复杂。。。</p>
+
+<p><strong>首先</strong>，根据条件筛选出来的 record 可能不止一条，所以还需要在 scan 的时候扫到一条就 update 一条。那还有什么也是需要一次操作多条 record 的呢？ 啊是 delete。
+所以我参考了 delete 的做法（真的不明觉厉）创建了一个 RecordUpdate 类，在这里存放需要更新的表名，字段，更新值（这些是固定的所以没有必要当作函数参数每次更新都调用一遍）以及更新函数</p>
+
+<p>又写了一个 adapter 函数，主要是为了适配 scan_record 的最后一个参数，并将其用于在每次 scan 到一个适配的参数的时候，调用 RecordUpdate 类的更新函数对这个 record 进行更新。</p>
+<pre><code class="language-C++">static RC record_reader_update_adapter(Record *record, void *context) {
+  RecordUpdater &amp;record_updater = *(RecordUpdater *)context;
+  return record_updater.update_record(record);
+}
+</code></pre>
+
+<p><strong>然后</strong>，怎么更新 record 里面相应字段的值又成了一个问题。我又是一通找啊，终于爬到了一个 FieldMeta 类，和 TableMeta 相对应，这个类主要存放了 field 的元数据，包括列名，数据类型，偏移量（应该是表数据存放地址的偏移量吧）还有长度，通过调用 tablemeta 的 field（列名）就能找到相应的 field 了</p>
+
+<p>最后一步就是如何更新字段的值了，record 的数据结构是这样的</p>
+<pre><code class="language-C++">struct Record 
+{
+  // bool valid; // false means the record hasn't been load
+  RID  rid;   // record's rid
+  char *data; // record's data
+};
+</code></pre>
+
+<p>数据是以字符数组的形式来存放的，我们又知道这个 field 的 offset 和 len ，那直接修改 data 数组对应这一段的值不就完事了</p>
+
+<p>一开始我是准备这么搞的</p>
+<pre><code class="language-C++">for(int i = 0; i &lt; field-&gt;len();i++){
+    record-&gt;data[i + field-&gt;offset()] = value-&gt;data[i];
+  }
+</code></pre>
+<p>一编译我傻了，value 的 data 是一个 void* ，还不能用下标来访问。。。好家伙</p>
+
+<p>还能咋办呢，再整一个字符数组分三段来 copy 吧，copy 完之后再赋给 record-&gt;data 完成覆盖（虽然很傻但是只能想到这种操作了55）</p>
+
+<p>激动的心，颤抖的手，从白天坐到黑夜的努力终于收获回报了5555</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-91c29be04f76cd8d487aef9f6a63f451.png" alt="Image" /></p>
+
+<p>一万多行日志，这苦有谁懂。。。</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-786c0ef4df602d5749133b34789ed56e.png" alt="Image" /></p>
+
+<blockquote>
+  <p>10/22 更新</p>
+</blockquote>
+
+<p><img src="https://pic4.zhimg.com/80/v2-9c358eb50f8527cb220d0e6640e52654.png" alt="Image" /></p>
+
+<p>目前做的功能测试都过了，开心</p>
+
+<p>感觉目前进度也没比别人慢多少呀</p>
+:ET

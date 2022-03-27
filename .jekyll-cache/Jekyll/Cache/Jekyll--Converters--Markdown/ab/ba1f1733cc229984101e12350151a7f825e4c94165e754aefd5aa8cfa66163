@@ -1,0 +1,72 @@
+I"�<p>今天继续来看代码</p>
+
+<p>有个很重要的点：miniob里面采用了seda架构，百度告诉我，它的核心思想是把一个请求处理过程分成几个Stage，不同资源消耗的 Stage 使用不同数量的线程来处理，Stage 间使用事件驱动的异步通信模式。seda 使用异步事件的方式，在线程池中调度。每个事件(event)，在每个阶段完成处理后，都必须调用 done 接口</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-e4534afd24ccd96d872dfa39eee752fb.png" alt="Image" /></p>
+
+<p><code class="language-plaintext highlighter-rouge">common/seda/stage_event.h</code>里面提供了 StageEvent 的接口，没时间再去研究 seda 整个代码库了，知道怎么调用就行。</p>
+
+<pre><code class="language-C++">// Processing for this event is done; execute callbacks
+  // this will trigger thread switch if there are callbacks,  this will be async
+  // Calling done_immediate won't trigger thread switch, this will be synchonized
+  void done();
+
+  // Processing for this event is done; execute callbacks immediately
+  // Calling done_immediate won't trigger thread switch, this will be synchonized
+  void done_immediate();
+
+  /**
+   *  Processing for this event is done if the event has timed out
+   *  \c timeout_event() will be called instead of \c callback_event()
+   *  if the event has timed out.
+   */
+  void done_timeout();
+</code></pre>
+
+<p>从注释中可以知道，<code class="language-plaintext highlighter-rouge">event-&gt;done()</code> 是seda 异步调用 event的 callback 处理，会触发线程切换；
+ 而<code class="language-plaintext highlighter-rouge">event-&gt;done_immediate()</code>会在当前线程直接进行 event 的删除。miniob 为了方便，好像都使用<code class="language-plaintext highlighter-rouge">event-&gt;done_immediate()</code>来做。</p>
+
+<p>在 event 完成之后，seda 会调用event的回调函数。通过 event-&gt;push_callback 放置回调函数，在event完成后，会按照push_callback的反向顺序调用回调函数。</p>
+
+<p>修改LOG_LEVEL等级到最高，观察输入指令后的 log 日志，加上一路 ctrl 加鼠标点点点，大致知道了 seda event 的运转流程</p>
+
+<p>以 create_table 为例</p>
+
+<p>在 execute_stage.cpp 里面通过 switch case 识别到 query 类型后，创建 storage_event 并调用 <code class="language-plaintext highlighter-rouge">default_storage_stage_-&gt;handle_event(storage_event);</code> 来处理该 event
+在 default_storage_stage.cpp 里又一次通过switch case 跳转到相应 query 类型处理段</p>
+<pre><code class="language-C++">case SCF_CREATE_TABLE: { // create table
+      const CreateTable &amp;create_table = sql-&gt;sstr.create_table;
+      rc = handler_-&gt;create_table(current_db, create_table.relation_name, 
+              create_table.attribute_count, create_table.attributes);
+      snprintf(response, sizeof(response), "%s\n", rc == RC::SUCCESS ? "SUCCESS" : "FAILURE");
+    }
+    break;
+</code></pre>
+<p>然后又跳到 <code class="language-plaintext highlighter-rouge">default_handler-&gt;create_table</code> ，在这里调用 Db 类的 create_table 操作，Db::create_table 又调用 <code class="language-plaintext highlighter-rouge">Table::create</code></p>
+
+<p>到这里创建表的流程就走完了，好一个套娃【流汗黄豆。。。</p>
+
+<p>摸清了套娃流程，接下来试一下实现 drop table 操作</p>
+
+<p>execute_stage 里面调用的和 create table 同样的接口，不说了</p>
+
+<p>进到<code class="language-plaintext highlighter-rouge">default_storage_stage_-&gt;handle_event(storage_event)</code>里面，模仿create补一个相似的操作</p>
+<pre><code class="language-C++"> case SCF_DROP_TABLE: { // drop table
+      ...
+      rc = handler_-&gt;drop_table(current_db, table_name);
+      ...
+    }
+</code></pre>
+
+<p>在 <code class="language-plaintext highlighter-rouge">default_handler</code>里面，补一个drop_table函数，在这里查询find_db，find_table如果存在对应的db和table，跳转到 db 类的 drop_table 函数中，<code class="language-plaintext highlighter-rouge">db::drop</code> 主要执行的功能是将该table从db类保存的哈希表中移除，并调用析构函数删除该 table 相关数据</p>
+
+<p>在 build/miniob/db/sys路径下保存了表相关的 .data 和 .table 文件，在 <code class="language-plaintext highlighter-rouge">Table::drop</code> 中将这两个文件删除</p>
+
+<p>至于源代码等比赛结束的时候再放出来吧2333</p>
+
+<p>改了半个晚上，终于成功了</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-8d3853af8d7e40d1b42b9753490f8b23.png" alt="" /></p>
+
+<p>终于做完一个功能了，感动感动</p>
+:ET

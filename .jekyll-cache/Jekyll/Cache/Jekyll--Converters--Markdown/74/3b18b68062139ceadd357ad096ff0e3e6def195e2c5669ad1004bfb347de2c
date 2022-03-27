@@ -1,0 +1,43 @@
+I"$
+<ul>
+  <li><a href="#数据库范式">数据库范式</a></li>
+  <li><a href="#mysql架构">MySQL架构</a></li>
+  <li><a href="#简述sql语言执行过程">简述SQL语言执行过程</a></li>
+  <li><a href="#事务">事务</a>
+    <ul>
+      <li><a href="#acid">ACID</a></li>
+      <li><a href="#innodb如何保证事务的原子性持久性和一致性">InnoDB如何保证事务的原子性、持久性和一致性？</a></li>
+    </ul>
+  </li>
+  <li><a href="#数据库索引">数据库索引</a>
+    <ul>
+      <li><a href="#概念">概念</a></li>
+      <li><a href="#索引的优点">索引的优点</a></li>
+      <li><a href="#联合索引">联合索引</a></li>
+      <li><a href="#什么情况下设置了索引但无法使用">什么情况下设置了索引但无法使用</a></li>
+      <li><a href="#什么样的情况适合创建索引">什么样的情况适合创建索引</a></li>
+      <li><a href="#创建索引时需要注意什么">创建索引时需要注意什么</a></li>
+      <li><a href="#聚簇索引和非聚簇索引">聚簇索引和非聚簇索引</a></li>
+      <li><a href="#主键就是聚簇索引吗">主键就是聚簇索引吗</a></li>
+      <li><a href="#b-树相对于-b-树的优点">b+ 树相对于 b 树的优点</a></li>
+      <li><a href="#为什么不用二叉树avl红黑树">为什么不用二叉树，AVL，红黑树</a></li>
+    </ul>
+  </li>
+  <li><a href="#锁">锁</a>
+    <ul>
+      <li><a href="#mysql-中按粒度的锁分类">MySQL 中按粒度的锁分类</a></li>
+      <li><a href="#乐观锁和悲观锁">乐观锁和悲观锁</a></li>
+      <li><a href="#排他锁和共享锁">排他锁和共享锁</a></li>
+      <li><a href="#如何解决数据库死锁">如何解决数据库死锁</a></li>
+    </ul>
+  </li>
+  <li><a href="#mysql是如何保证主备一致的">MySQL是如何保证主备一致的？</a></li>
+  <li><a href="#存储引擎">存储引擎</a>
+    <ul>
+      <li><a href="#innodb">InnoDB</a></li>
+      <li><a href="#myisam">MyISAM</a></li>
+    </ul>
+  </li>
+  <li><a href="#redis">Redis</a></li>
+</ul>
+:ET

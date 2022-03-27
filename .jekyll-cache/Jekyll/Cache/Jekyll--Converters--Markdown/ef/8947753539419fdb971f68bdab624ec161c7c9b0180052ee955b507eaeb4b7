@@ -1,0 +1,48 @@
+I"�
+<ul>
+  <li><a href="#概述">概述</a>
+    <ul>
+      <li><a href="#网络体系结构">网络体系结构</a></li>
+    </ul>
+  </li>
+  <li><a href="#应用层">应用层</a>
+    <ul>
+      <li><a href="#动态主机配置协议">动态主机配置协议</a></li>
+      <li><a href="#浏览器输入一个-url-发生的过程">浏览器输入一个 url 发生的过程</a></li>
+    </ul>
+  </li>
+  <li><a href="#传输层">传输层</a>
+    <ul>
+      <li><a href="#udp-和-tcp">UDP 和 TCP</a></li>
+      <li><a href="#tcp-三次握手">TCP 三次握手</a></li>
+      <li><a href="#tcp-四次挥手">TCP 四次挥手</a>
+        <ul>
+          <li><a href="#time_wait">TIME_WAIT</a></li>
+        </ul>
+      </li>
+      <li><a href="#tcp-可靠传输">TCP 可靠传输</a></li>
+      <li><a href="#tcp-滑动窗口">TCP 滑动窗口</a></li>
+      <li><a href="#tcp-流量控制">TCP 流量控制</a></li>
+      <li><a href="#tcp-拥塞控制">TCP 拥塞控制</a></li>
+    </ul>
+  </li>
+  <li><a href="#http">HTTP</a>
+    <ul>
+      <li><a href="#状态码">状态码</a>
+        <ul>
+          <li><a href="#1xx-信息">1XX 信息</a></li>
+          <li><a href="#2xx-成功">2XX 成功</a></li>
+          <li><a href="#3xx-重定向">3XX 重定向</a></li>
+          <li><a href="#4xx-客户端错误">4XX 客户端错误</a></li>
+          <li><a href="#5xx-服务器错误">5XX 服务器错误</a></li>
+        </ul>
+      </li>
+      <li><a href="#cookie-和-session">Cookie 和 Session</a></li>
+      <li><a href="#https">HTTPS</a></li>
+      <li><a href="#https-加密">HTTPS 加密</a></li>
+      <li><a href="#https-数字证书">HTTPS 数字证书</a></li>
+      <li><a href="#get-和-post">GET 和 POST</a></li>
+    </ul>
+  </li>
+</ul>
+:ET

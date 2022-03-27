@@ -1,0 +1,36 @@
+I"�<blockquote>
+  <p>有些共性问题网上解决方法很多，贴个索引方便找就好，就不污染网络环境造低级轮子啦</p>
+</blockquote>
+
+<hr />
+<h2 id="github">Github</h2>
+
+<ul>
+  <li>
+    <p><a href="https://blog.csdn.net/m0_46332820/article/details/119708248">Support for password authentication was removed on August 13, 2021</a></p>
+  </li>
+  <li>
+    <p><a href="https://blog.csdn.net/yychuyu/article/details/80186783">git push代码到github上一直提示输入用户名及密码</a></p>
+  </li>
+</ul>
+
+<h2 id="vs-code">VS code</h2>
+
+<ul>
+  <li><a href="https://zhuanlan.zhihu.com/p/360862550">python 导入上级目录报错 No module named *</a></li>
+  <li><a href="https://blog.csdn.net/u010571102/article/details/106423893">python is not installed</a></li>
+</ul>
+
+<h2 id="linux">Linux</h2>
+
+<ul>
+  <li>
+    <p><a href="https://blog.csdn.net/xiaoxiali/article/details/17096591">su 认证失败</a></p>
+  </li>
+  <li><a href="http://t.zoukankan.com/sogeisetsu-p-11401562.html">useradd 创建新用户无家目录</a></li>
+  <li>
+    <p><a href="https://docs.vmware.com/cn/VMware-Workstation-Player-for-Windows/15.0/com.vmware.player.win.using.doc/GUID-AB5C80FE-9B8A-4899-8186-3DB8201B1758.html">VMware 更改默认共享文件夹路径</a></p>
+  </li>
+  <li><a href="https://blog.csdn.net/qq_33652147/article/details/82942439">vmware下启动虚拟机提示打不开磁盘“xxx.vmdk”或它所依赖的某个快照磁盘</a></li>
+</ul>
+:ET

@@ -1,0 +1,425 @@
+# Cache Lab 实验小结
+
+> 参考资料
+>
+> 课程ppt [rec07.pdf (cmu.edu)](http://www.cs.cmu.edu/afs/cs/academic/class/15213-f15/www/recitations/rec07.pdf)
+>
+> 实验要求pdf [cachelab.dvi (cmu.edu)](http://csapp.cs.cmu.edu/3e/cachelab.pdf)
+
+## PartA
+
+partA 中要求我们在 csim.c 中实现一个缓存模拟器，模拟器以 valgrind 内存跟踪为数据，在测试跟踪文件上模拟缓存的命中/未命中行为，替换策略采用 LRU
+
+测试文件在 traces 文件夹下，大概长这个样子
+
+```
+ L 10,1
+ M 20,1
+ L 22,1
+ S 18,1
+ L 110,1
+ L 210,1
+ M 12,1
+ 
+ /*
+ I - 指令加载 （这个官方提示可以忽略不考虑）
+ L - 数据加载
+ S - 数据存储
+ M - 数据修改
+ */
+```
+
+这部分内容大概还算简单，参照着 实验 pdf 和官方讲义 PPT 提示来做就行
+
+### 定义缓存结构体
+
+讲义告诉我们，不需要对 B 进行处理，同时我们的缓存替换策略要用 LRU，因为链表 + 哈希表在 C 里面实现起来太麻烦了，所以直接加个时间戳就好了
+
+```C
+typedef struct{
+    unsigned tag;      //标记位
+    int valid_bit;     //有效位
+    int time_stamp;    //时间戳
+}cache_line;
+```
+
+### 读取参数 
+
+我发现 PPT 真的给了非常详尽的提示，比如说 getopt 和 fscanf 的使用方法，还有 malloc/free 的要求
+
+```C
+int opt;
+while(-1 != (opt = getopt(argc, argv, "vs:E:b:t:"))){
+     switch (opt){   
+        case 'v':               
+            break;    
+        case 's':
+             //printf("s");
+            s = atoi(optarg);         
+            S = (1 << s);
+            break;
+        case 'E':
+            //printf("E");
+            E = atoi(optarg);
+            break;
+        case 'b':
+            //printf("b");
+            b = atoi(optarg);
+            B = (1 << b);
+            break;
+        case 't':
+            //strcpy(file_path, optarg);
+            //用 strcpy 会core dump
+            file_path = optarg;
+            break;
+        default:
+            printf("Wrong argument\n");
+            break;
+    }
+}
+```
+
+### 初始化缓存
+
+在读取完缓存之后需要先初始化一下把刚才读取的块大小和行个数配置一下才能进行操作，好久不用 C 了差点在二维数组 malloc 的环节上翻车2333.
+
+然后就是赋上初值，标记位随便给个值都行，有效位和时间戳一定要赋成 0
+
+我还想当然加了个 total_capacity 的变量来存总大小，但是到最后发现好像并没有什么卵用
+
+```C
+void init_cache(){
+    total_capacity = S * E * B;
+    cache = (cache_line**)malloc(sizeof(cache_line*) * S);
+    for(int i = 0;i < S;i++){
+        cache[i] = (cache_line*) malloc(sizeof(cache_line) * E);
+    }
+    for(int i = 0;i < S;i++){
+        for(int j = 0;j < E;j++){
+            cache[i][j].tag = 0xffffffff;
+            cache[i][j].valid_bit = 0;
+            cache[i][j].time_stamp = 0;
+        }
+    }
+}
+```
+
+### 解析指令
+
+这里有个地方需要注意，‘M’操作是用来修改数据的，需要先读取后再保存，也就是需要两次 cache 操作
+
+```C
+char identifier;   
+unsigned address;
+int size; 
+while(-1 != fscanf(file, " %c %x,%d", &identifier, &address, &size)){
+        switch (identifier){
+            case 'I':
+                //指令加载
+                //讲义里讲可以忽略
+                break;
+            case 'L':
+                //数据加载
+                load_cache(address, size);
+                break;
+            case 'M':
+                //数据修改（数据加载后跟数据存储）
+                load_cache(address, size);
+                //不用break直接往下走
+            case 'S':
+                //数据存储
+                save_cache(address, size);
+                break;     
+            default:
+                break;
+        }
+        update_time_stamp();
+}
+```
+
+### 缓存操作
+
+
+
+```C
+void load_cache(unsigned address, int size){
+    unsigned tag_index = address >> (s + b);
+    unsigned set_index = (address >> b) & (0xffffffff >> (32 - s));
+
+    //hit
+    for(int i = 0;i < E;i++){
+        if(cache[set_index][i].valid_bit == 1 && cache[set_index][i].tag == tag_index){
+            hit++;
+            cache[set_index][i].time_stamp = 0;
+            return;
+        }
+    }
+    
+    //miss
+    miss++;
+    for(int i = 0;i < E;i++){
+        if(cache[set_index][i].valid_bit == 0){
+            cache[set_index][i].valid_bit = 1;
+            cache[set_index][i].tag = tag_index;
+            cache[set_index][i].time_stamp = 0;
+            //printf("miss\n");
+            return;
+        }
+    }
+    //eviction
+    //C没有哈希表能用，在cacheline里面加个时间戳实现简易LRU
+    int max_time_stamp = 0;
+    int max_stamp_pos = 0;
+    eviction++;
+    for(int i = 0;i < E;i++){
+        //到这里之后cache[set_index]所有的validbit都是1了 不需要再加判断
+        if(cache[set_index][i].time_stamp > max_time_stamp){
+            max_time_stamp = cache[set_index][i].time_stamp;
+            max_stamp_pos = i;
+        }
+    }
+    cache[set_index][max_stamp_pos].tag = tag_index;
+    cache[set_index][max_stamp_pos].time_stamp = 0; 
+    return;
+}
+
+void save_cache(unsigned address, int size){
+    //讲义对于数据位没有要求，只需要对索引和有效位进行操作，所以操作逻辑和load_cache是一样的
+    load_cache(address, size);
+}
+```
+
+满分，有什么难的
+
+
+
+![image-20220114165701079](https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20220114165701079.png)
+
+## PartB
+
+这个 part 要求我们编写一个对缓存友好的矩阵转置算法（就是说缓存 miss 次数要尽可能少）。然后提了几个要求
+
+1. 一共只能使用不超过 12 个 int 型变量
+2. 不能使用递归
+3. 只能改变 B 数组的内容
+4. malloc 被禁止使用
+
+cache 的参数已经被给定  s = 5, b = 5, E = 1，按这么计算的话那这个 cache 的大小就是 32 组，每组 1 行，每行 32 字节也就是 8 个 int，结合 ppt 给的提示，很显然要用分块来做这个转置了
+
+![image-20220114205306580](https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20220114205306580.png)
+
+
+
+缓存每读入一次就会顺序把接下来的七个一起存入同一行（组），由于二维数组是行优先的，就相当于A[0] [0] ~ A[0] [7]，而转置后这部分数据对应的是 B[0] [0] ~ B[7] [0]，这部分就需要用到 8 个缓存行
+
+|      |                     |
+| ---- | ------------------- |
+| 0    | B[0] [0] ~ B[0] [7] |
+| 1    | B[1] [0] ~ B[1] [7] |
+| 2    | B[2] [0] ~ B[2] [7] |
+| 3    | B[3] [0] ~ B[3] [7] |
+| 4    | B[4] [0] ~ B[4] [7] |
+| 5    | B[5] [0] ~ B[5] [7] |
+| 6    | B[6] [0] ~ B[6] [7] |
+| 7    | B[7] [0] ~ B[7] [7] |
+
+### 32 * 32
+
+在 32 * 32 的矩阵里面，对于一行我们就需要用到 4 组缓存，所以 cache 最多只能存 8 行而不会发生冲突，所以我们用 8 * 8 的分块来做转置，这样才能尽量充分利用到 block 
+
+那么对于 A 和 B 发生冲突的情况呢？通过查看 trace 文件，我们知道 A 和 B 两个数组在内存上是相邻的，32 * 32 又是 cache 的整数倍，因此可以推断出 **A 和 B 的同位置占用的是同一组缓存**；
+
+代码实现上，一开始我用了四重循环来做转置
+
+```C
+for(int i = 0;i < 32;i += block){
+        for(int j = 0;j < 32;j += block){
+            //block*block
+            for(int k = i;ik < i + block;k++){            
+                for(int j1 = j;j1 < j + block;j1++){
+                    tmp = A[k][j1];
+                    B[j1][k] = tmp;
+                }               
+            }
+        }
+    }
+```
+
+但是 343 次 miss 并没有打到满分的要求
+
+![image-20220114220816789](https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20220114220816789.png)
+
+这是为什么呢？原因就出在最后一重循环上。稍微画个图就明白了，直接把 A 赋给 B 显然没有最大化利用到缓存。当 k = j1 时，也就是在对角线上时候，A 和 B 占用的是同一组缓存块，这个时候直接把 A 赋给 B 就相当于在这个缓存块上重复读写 A 和 B（这个应该就是 eviction 抖动吧）
+
+所以这个时候我们可以用一个简单的办法，因为除了循环需要的 4 个变量外我们还剩余 8 个自由变量可以用，正好可以存一个 cache line。以空间换时间，把一行一次性读完，减少冲突不命中。完整代码如下
+
+```C
+void transpose_submit_32(int M, int N, int A[N][M], int B[M][N], int block){
+    //block = 8
+    int tmp1 = 0, tmp2 = 0, tmp3 = 0, tmp4 = 0, tmp5 = 0, tmp6 = 0, tmp7 = 0, tmp8 = 0;
+    //int tmp = 0;
+    for(int i = 0;i < 32;i += block){
+        for(int j = 0;j < 32;j += block){
+            //block*block
+            for(int k = i;ik < i + block;k++){
+                /*
+                for(int j1 = j;j1 < j + block;j1++){
+                    tmp = A[k][j1];
+                    B[j1][k] = tmp;
+                }*/                
+                 tmp1 = A[k][j+0];
+					tmp2 = A[k][j+1];
+					tmp3 = A[k][j+2];
+					tmp4 = A[k][j+3];
+					tmp5 = A[k][j+4];
+					tmp6 = A[k][j+5];
+					tmp7 = A[k][j+6];
+					tmp8 = A[k][j+7];
+					B[j+0][k] = tmp1;
+					B[j+1][k] = tmp2;
+					B[j+2][k] = tmp3;
+					B[j+3][k] = tmp4;
+					B[j+4][k] = tmp5;
+					B[j+5][k] = tmp6;
+					B[j+6][k] = tmp7;
+					B[j+7][k] = tmp8;
+            }
+        }
+    }
+}
+```
+
+
+
+![image-20220114221059105](https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20220114221059105.png)
+
+### 64 * 64
+
+64 * 64 相比于上一个就难很多了。这个时候数组一行就有 64 个元素，占用了 8 个缓存组，所以 cache 最多只能占用 4 行而不会发生冲突。此时 8  * 8 的分块就不起作用了，块内都会冲突了那分块还有啥意义。。
+
+那 4 * 4 呢？虽然没办法充分利用到加载到缓存的部分，但我还是试了一下（用上了 4 个局部变量），最后结果是 1651 次，只能说好多了，但是距离满分还有一点距离。
+
+正当我抓耳挠腮找不到什么好方法的时候，[这篇知乎文章](https://zhuanlan.zhihu.com/p/138881600) 瞬间打开了我的思路，我靠还有这么妙的方法
+
+他在 8 * 8 大块的前提下又分了一次 4 * 4的小块。先把 A 的前四行全部复制到 B 的前四行，此时 B 的右上角元素是应该放到左下角的元素。
+
+![](https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20220114223716141.png)
+
+然后把 A 中对应位置的元素存到本地变量里面，刚好 8 个
+
+![image-20220114223824730](https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20220114223824730.png)
+
+buf1 中的四个元素和 B 右上角第一行的元素交换，把 buf2 中的元素存到 B 右下角的对应位置。此时缓存中 B[4] 替换 B [0]
+
+![image-20220114223940793](https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20220114223940793.png)
+
+把 buf1 中元素存放到 B 左下角位置
+
+![image-20220114224118883](https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20220114224118883.png)
+
+重复 (2) (3) (4)，直到所有元素到达正确位置
+
+以下是完整代码
+
+```C
+void transpose_submit_64(int M, int N, int A[N][M], int B[M][N], int block){
+    //block = 8
+    int tmp = 0;
+    int tmp1 = 0, tmp2 = 0, tmp3 = 0, tmp4 = 0, tmp5 = 0, tmp6 = 0, tmp7 = 0, tmp8 = 0;
+    for(int i = 0;i < 64;i += block){
+        for(int j = 0;j < 64;j += block){
+            //block*block
+            for(int k = i;k < i + block/2;k++){
+             tmp1 = A[k][j+0];
+				tmp2 = A[k][j+1];
+				tmp3 = A[k][j+2];
+				tmp4 = A[k][j+3];
+				tmp5 = A[k][j+4];
+				tmp6 = A[k][j+5];
+				tmp7 = A[k][j+6];
+				tmp8 = A[k][j+7];
+				B[j+0][k] = tmp1;
+				B[j+0][k+4] = tmp5;
+             B[j+1][k] = tmp2;
+				B[j+1][k+4] = tmp6;
+             B[j+2][k] = tmp3;
+				B[j+2][k+4] = tmp7;
+             B[j+3][k] = tmp4;
+				B[j+3][k+4] = tmp8;
+            }
+            for(int k = j;k < j + block/2;k++){
+                tmp1 = A[i+4][k];
+                tmp5 = A[i+4][k+4];
+                tmp2 = A[i+5][k];
+                tmp6 = A[i+5][k+4];
+                tmp3 = A[i+6][k];
+                tmp7 = A[i+6][k+4];
+                tmp4 = A[i+7][k];
+                tmp8 = A[i+7][k+4];
+
+                tmp = B[k][i+4];
+                B[k][i+4] = tmp1;
+                tmp1 = tmp;
+
+                tmp = B[k][i+5];
+                B[k][i+5] = tmp2;
+                tmp2 = tmp;
+
+                tmp = B[k][i+6];
+                B[k][i+6] = tmp3;
+                tmp3 = tmp;               
+
+                tmp = B[k][i+7];
+                B[k][i+7] = tmp4;
+                tmp4 = tmp;
+                     
+
+                B[k+4][i] = tmp1;
+                B[k+4][i+4] = tmp5;
+                B[k+4][i+1] = tmp2;
+                B[k+4][i+5] = tmp6;
+                B[k+4][i+2] = tmp3;
+                B[k+4][i+6] = tmp7;
+                B[k+4][i+3] = tmp4; 
+                B[k+4][i+7] = tmp8;
+            }
+        }
+
+    }
+}
+```
+
+![image-20220114225135901](https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20220114225135901.png)
+
+### 61 * 67
+
+这是一个不规则块，一开始我还有些奇怪，这要怎么分块呢？后来发现好像还是一样的，尝试了一下  8 * 8, miss 次数 2118，改成16  * 16 的分块，1992 次miss 直接满分了，连对角线局部变量处理都不需要，看来这个要求挺松的2333
+
+```C
+void transpose_submit_61(int M, int N, int A[N][M], int B[M][N], int block){
+    
+    //int tmp1 = 0, tmp2 = 0, tmp3 = 0, tmp4 = 0, tmp5 = 0, tmp6 = 0, tmp7 = 0;
+    int i = 0, j = 0, k = 0, h = 0;
+    //int tmp = 0;
+    //直接分块好像就能过了
+    for(i = 0;i < N;i += block){
+        for(j = 0;j < M;j += block){
+            for(k = i;k < i + block && k < N;k++){
+                for(h = j;h < j + block && h < M;h++){
+                    //tmp = A[k][h];
+                    B[h][k] = A[k][h];
+                }
+            }
+        }
+    }
+}
+```
+
+![](https://picgo-1306905554.cos.ap-shanghai.myqcloud.com/image-20220114165720591.png)
+
+## 总结
+
+总的来说，这个 lab 做下来还是挺费脑细胞的，要不是网上大牛多我可能一辈子都想不出这么妙的转换方法555。光看书的话对 cache 的理解确实还是不太到位，还是那句话：实践出真知嗷
+
+
+

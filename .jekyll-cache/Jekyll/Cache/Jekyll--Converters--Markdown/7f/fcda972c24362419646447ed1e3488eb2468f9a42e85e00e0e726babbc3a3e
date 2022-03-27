@@ -1,0 +1,165 @@
+I"�&<p>终于把增加 date 字段的功能给实现了</p>
+
+<p>这次的日记，可以算是个题后总结吧。主要是，在开发的过程中，时间比较零碎，再加上不断地在踩坑，踩的我也没什么心情写这东西了。</p>
+
+<p>不管怎么说，终归是做完了，多少写点来记录一下吧。</p>
+
+<p>首先就是先把 date 类型的字段给加上</p>
+
+<p>官方 FAQ 是这么写的</p>
+
+<blockquote>
+  <p>如果是处理日期类型，可以选择保存为整数，或者扩展char，以支持更长的字符串。</p>
+</blockquote>
+
+<p>这是不准备扩展新字段了吗？我不理解，我觉得最好还是加上 date 类型吧</p>
+
+<p>咋加呢？miniob 用了 lex 和 yacc 来解析词法生成语法树，虽然我没学过编译原理也不懂 lex 和 yacc 的语法，但是正则和照抄的奥妙我也是略知一二，date 本质上也是解析字符串，只是解析的规则复杂了一点而已。那我就照着 char 的规则复制粘贴一份再把 char 改成 date 不就完事了，然后再写个正则来匹配日期（因为日期也包含在字符串的解析范围里面所以还得把解析日期的语句扔到解析字符串之前）。还就内个计划通</p>
+
+<p>然后第一个坑就来了，按照官方教我们的编译 lex 的方法，我下载了flex - version 2.5.35，照着它给的指令来编译</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>flex –header-file=lex.yy.h lex_sql.l
+</code></pre></div></div>
+<p>回车一敲，好家伙，报了个 can’t find header-file 的错，我寻思我明明也妹做错啊，怎么就报错了呢？上网搜吧，关于 lex 的内容寥寥无几。。无奈之下跑到钉钉群里问，他们告诉我，官方的指令是错的， header 之前是两条杠 <code class="language-plaintext highlighter-rouge">--</code> 而且还不能直接复制的官方代码，得自己手敲，因为那个横杠的格式还不一样。。。好家伙，还有这种事，那我自己手敲一遍吧。得，还是报错。这可给我整不会了。尝试安装 flex 到最新版本，您猜怎么着？它正常了</p>
+
+<p>牛</p>
+
+<p>解决完解析的问题之后，创建带有 date 字段的表格应该就没有问题了，接下来就是如何往里面插入value了。</p>
+
+<p>首先是长度问题，因为其他的字段长度都是 4，肯定是放不下 date 数据的，所以在<code class="language-plaintext highlighter-rouge">attr_info_init</code>函数执行字段类型初始化的时候加一个类型判断，如果是 date 的话就赋个10（YYYY-MM-DD一共10），至于其他的初始化，和 char 型差不多，复制粘贴稍微改改就行了</p>
+
+<p>到这里应该就能正常往里面插入日期数据了（印象中）</p>
+
+<p>然后最重要的，就是需要校验日期数据的正确性，要是连 2999-21-38 都能往里插的话那就出大问题。那么在哪里进行数据的校验呢？在 yacc 生成初始语法树的时候直接校验应该是最好的，可惜我不会。所以我选择在 <code class="language-plaintext highlighter-rouge">Table::make_record</code>里面实现数据校验，因为检查字段类型是否一致也是在这里实现的，那还是把屎山堆到一起好了。</p>
+
+<blockquote>
+  <p>其实一开始我挑错了地方，写到了<code class="language-plaintext highlighter-rouge">insert_record_from_file</code>里面，写了半天编译完之后啥改变没有。仔细一看才发现这个函数是从文件里面导入数据的时候使用的。痛苦面具。。</p>
+</blockquote>
+
+<p>由于日期字符串中存在 - 所以需要分割年月日来进行判断，又因为在输入的时候并不一定遵循 YYYY-MM-DD 的格式，用 substr 来分割并不合适。在这里我用了 <code class="language-plaintext highlighter-rouge">std::stringstream</code> 来读取日期字符串，<code class="language-plaintext highlighter-rouge">getline</code> 来识别 - 做分割，又写了一个<code class="language-plaintext highlighter-rouge">judege_date</code>来判断日期合法性，若合法再把年月日处理成正确的格式（YYYY-MM-DD）拼装在一起返回给需要保存的 record_out</p>
+
+<blockquote>
+  <p>这里又有一个小插曲</p>
+</blockquote>
+
+<p>封装在<code class="language-plaintext highlighter-rouge">Value-&gt;data</code>里的数据格式是 void*，调用的时候又加了一个 const，要对里面的日期数据做判断需要把他转换成字符串形式。按理说正常的转换操作应该是这样的</p>
+
+<pre><code class="language-C++">LOG_INFO("before transfrom :%s",value.data);
+void* date_data = const_cast&lt;void*&gt;(value.data);
+LOG_INFO("date_data %s", date_data);
+const char *date_c = static_cast&lt;const char* &gt;(date_data);
+LOG_INFO("date_c %s", date_c);
+std::string date (date_c);
+LOG_INFO("date %s", date);
+</code></pre>
+
+<p>然后问题就来了，我在日志里发现，前三个都能正常显示日期数据，到了最后一个突然变成了乱码？？咋回事。string 初始化出了问题？我也没用错啊？一脸懵逼的我把这个拿去问了个腾讯大佬，得到的是两脸懵逼</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-9fa1719480bdf3e05a237048d3603c95.png" alt="Image" /></p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-d068d844ee4efad9505d5bf81e212d8b.png" alt="Image" /></p>
+
+<p>当时下面的处理还有些问题，所以插入之后在数据库里也是不显示的。所以我理所当然地认为是 string 处理的问题。看了半天代码，意识到下面的错误，改完之后功能正常了2333。不会是日志输出的的问题吧？查了一下发现，%s 只支持 C 语言内置的数据类型，string 是不能直接输出的。。。好家伙，这波是基础不牢的锅了</p>
+
+<p>搞定，好耶</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-90f1a2f6850ce051fed739d2085cd1d5.png" alt="Image" /></p>
+
+<p>坏了，光顾着高兴，我好像忘记写 date 的 where 条件筛选了。。</p>
+
+<p>得，遇到困难睡大觉，今天就这样吧，明天再做zZZ</p>
+
+<blockquote>
+  <p>10-25 更新</p>
+</blockquote>
+
+<p>写 where 条件筛选，这个应该蛮简单的。先找到 select 语句执行的地方，一路摸下去，找到<code class="language-plaintext highlighter-rouge">DefaultConditionFilter::filter</code>，这个函数就是在建立查询执行节点的时候用来过滤条件的</p>
+
+<p>因为在输入查询条件的时候并不是都是输入的YYYY-MM-DD的规定格式，所以不能简单地用 substr 直接截断，这里我还是用的<code class="language-plaintext highlighter-rouge">std::stringstream</code>来读取</p>
+
+<p>一开始我是这么来判断的</p>
+<pre><code class="language-C++">std::stringstream deserialize_stream;
+deserialize_stream.clear();
+deserialize_stream.str(date_left);
+std::string YY_left ;
+std::string MM_left ;
+std::string DD_left ;
+std::string data;
+while(std::getline(deserialize_stream, data,'-')){
+        //LOG_INFO("left%s",data.c_str());
+  if(cnt == 0)  YY_left = data;
+  if(cnt == 1)  MM_left = data;
+  if(cnt == 2)  DD_left = data;
+  if(cnt == 3)  break;
+   cnt ++;
+  }
+std::string YY_right ;
+std::string MM_right ;
+std::string DD_right ;
+while(std::getline(deserialize_stream, data,'-')){
+  //LOG_INFO("right%s",data.c_str());
+  if(cnt == 0)  YY_right = data;
+  if(cnt == 1)  MM_right = data;
+  if(cnt == 2)  DD_right = data;
+  if(cnt == 3)  break;
+  cnt ++;
+  }
+cmp_result = YY_left.compare(YY_right);
+if(cmp_result == 0){
+   cmp_result = MM_left.compare(MM_right);
+   if(cmp_result == 0){
+      cmp_result = DD_left.compare(DD_right);
+    }
+}
+</code></pre>
+
+<p>新建了很多字符串来比较，写的很丑陋也很影响性能。后来我想了一个比较取巧的方法，把日期都转化成天数来进行比较（因为测试日期最小到1970所以我直接减掉1970避免溢出的可能性）</p>
+
+<pre><code class="language-C++">while(std::getline(deserialize_stream, data,'-')){
+//LOG_INFO("right%s",data.c_str());
+  if(cnt == 0)  right_day += (atoi(data.c_str()) - 1970) * 365;
+  if(cnt == 1)  right_day += atoi(data.c_str()) * 30;
+  if(cnt == 2)  right_day += atoi(data.c_str());
+  if(cnt == 3)  break;
+    cnt ++;
+  }
+//left_day同理
+cmp_result = left_day - right_day;
+</code></pre>
+
+<p>自测应该没有什么大问题了，等官方拉取测试看看吧</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-6351707187b7cb0951b778b5916ab138.png" alt="Image" /></p>
+
+<blockquote>
+  <p>10-26 更新</p>
+</blockquote>
+
+<p>万万没想到啊，今天一测试，居然之前过的的都挂掉了，什么鬼啊，明明我没加什么乱七八糟的东西啊
+<img src="https://pic4.zhimg.com/80/v2-2f74d85c641430dae6e8c569717bd645.png" alt="Image" /></p>
+
+<p>问了下官方，他说我 select 查询的时候会多一列出来？？
+<img src="https://pic4.zhimg.com/80/v2-aab280b8c4aa3ae01d4f1d66ea878f7b.png" alt="Image" />
+自己测了一下，还真是，而且就只有 chars 这个类型会出问题
+<img src="https://pic4.zhimg.com/80/v2-bd99fde46a5608b2b9b1430948f18ed1.png" alt="Image" /></p>
+
+<p>哪出了问题啊？我百思不得其解</p>
+
+<p>开始排查吧</p>
+
+<p>从 insert 开始查起，打日志一点一点往下摸，摸到了 select，摸了一天多，愣是没找到问题在哪，日志里看起来都是很正常的，创建 record 的时候 len，type，offset 都是正常的，创建 select 节点的时候 schema 也是正常的。我甚至萌生了退回到上个版本重新写一遍 date 的想法。</p>
+
+<p>终于  在 28 号早上，我在对比了上个 commit 的修改记录的时候发现</p>
+
+<p><img src="https://pic4.zhimg.com/80/v2-0dbd4ae132c8b127fc27d6b6d000d57e.png" alt="Image" /></p>
+
+<p>我居然</p>
+
+<p>在这个地方</p>
+
+<p>漏了一个 break ！！！</p>
+
+<p>无语。。。</p>
+
+<p>现在应该正常了</p>
+
+:ET
