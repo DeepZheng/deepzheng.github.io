@@ -14,5 +14,13 @@ title: 关于我
 ![ ](/images/wechat.png)
 
 ![ ](/images/qq.png)
+
+**以下为友情链接**
+
+[ljq's blog](https://www.rochel.cc/)
+
+[czhの生活観察](https://www.rochel.cc/)
+
+
 {% include comments.html %}
 
