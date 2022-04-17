@@ -19,7 +19,9 @@ title: 关于我
 
 [ljq's blog](https://www.rochel.cc/)
 
-[czhの生活観察](https://www.rochel.cc/)
+[czhの生活観察](https://www.vast3c.cc/)
+
+[LightZH](https://lightzh.cc/)
 
 
 {% include comments.html %}
